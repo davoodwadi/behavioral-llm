@@ -1,0 +1,2 @@
+trial_id,iteration,timestamp,model_name,factor_name,block_variable_name,block_variable_level_display,factor_display_order,llm_ranking,llm_ranking_int,raw_response
+c0fe16ba-615e-48ee-b5f9-21101319473b,0,2025-09-30T09:18:29.242259,gemini-2.5-flash-lite,COO,,,"['Japan', 'United States', 'China', 'Britain', 'France', 'Italy', 'Germany']","['Japan', 'United States', 'Britain', 'France', 'Germany', 'Italy', 'China']","[1, 2, 4, 5, 7, 6, 3]","[1, 2, 4, 5, 7, 6, 3]"

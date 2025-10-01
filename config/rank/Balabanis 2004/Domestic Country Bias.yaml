@@ -1,0 +1,54 @@
+system_prompt: You are a consumer in a market research study. Your task is to rank
+  the options given. Please respond with ONLY the array of the rankings (most preferred
+  to least preferred). Do not provide any other text, explanation, or punctuation.
+factors_list:
+- - COO
+  - - COO|name: Britain
+      COO|text: Made in UK
+    - COO|name: United States
+      COO|text: Made in USA
+    - COO|name: France
+      COO|text: Made in France
+    - COO|name: Italy
+      COO|text: Made in Italy
+    - COO|name: Germany
+      COO|text: Made in Germany
+    - COO|name: Japan
+      COO|text: Made in Japan
+    - COO|name: China
+      COO|text: Made in China
+block_variable:
+- brand
+- - brand|name: Name 1
+    brand|text: Text 1
+  - brand|name: Name 2
+    brand|text: Text 2
+  - brand|name: Name 3
+    brand|text: Text 3
+segments:
+- segment_label: Fixed Segment
+  segment_text: "**Scenario:**\n    You are considering a purchase.\n\n**Instructions:**\n\
+    Please carefully review the options below. \nBased on the information provided,\
+    \ rank your preference from most preferred to least preferred."
+  segment_id: 5b8fd
+- segment_label: Ranking Segment
+  segment_text: 'Product: {brand}
+
+
+    {COO}'
+  segment_id: 29fe8
+  segment_text_inserted: 'Product: TV
+
+
+    Made in Germany'
+- segment_label: Fixed Segment
+  segment_text: " **Question:**\n    How would you rank these items? (Respond with\
+    \ a JSON array of integers as ranks)\n"
+  segment_id: 7569c
+k: 1
+test: false
+sleep_amount: 1.0
+models_to_test:
+- openai-gpt-4.1-nano
+randomize: true
+paper_url: https://doi.org/10.1177/0092070303257644

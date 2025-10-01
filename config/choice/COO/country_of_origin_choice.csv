@@ -1,0 +1,13 @@
+trial_id,iteration,timestamp,model_name,llm_choice,raw_response,choice1_product,choice1_brand,choice2_product,choice2_brand
+f931f46e-00ec-405d-9c2b-9d25a156af8b,0,2025-09-30T10:02:53.866321,gpt-4.1-nano,1,1,product_laptop,brand_noname,product_laptop,brand_apple
+78422d34-7a56-4f40-a949-30f2f7832980,1,2025-09-30T10:02:55.877406,gpt-4.1-nano,1,1,product_laptop,brand_apple,product_tablet,brand_apple
+d9a0f6a7-3503-4b27-ac23-40a95d1e7dbe,1,2025-09-30T10:02:57.883355,gpt-4.1-nano,1,1,product_laptop,brand_apple,product_tablet,brand_noname
+ac429758-f6fe-4223-8452-68eaec70a663,1,2025-09-30T10:02:59.901856,gpt-4.1-nano,1,1,product_tablet,brand_apple,product_laptop,brand_noname
+0ac4c3ec-bb80-49d2-94fb-096321451a11,1,2025-09-30T10:03:01.908389,gpt-4.1-nano,1,1,product_laptop,brand_noname,product_tablet,brand_noname
+d6db39ee-b12d-4997-aa25-ae2537a94aea,1,2025-09-30T10:03:03.918683,gpt-4.1-nano,1,1,product_tablet,brand_noname,product_tablet,brand_apple
+28422a97-3a56-4198-93a2-6cd7ae2a8f68,0,2025-09-30T10:03:05.932853,meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8,1,1,product_laptop,brand_noname,product_laptop,brand_apple
+42675b21-ab88-496a-b3ce-c2a08e68bc5c,1,2025-09-30T10:03:07.950882,meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8,1,1,product_tablet,brand_apple,product_laptop,brand_apple
+50d95bdf-14e7-4b8c-8267-86bb5f4c29fb,1,2025-09-30T10:03:09.956943,meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8,1,1,product_tablet,brand_noname,product_laptop,brand_apple
+a213e3be-d473-4bf0-83f7-1b0ff1729420,1,2025-09-30T10:03:11.973602,meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8,1,1,product_laptop,brand_noname,product_tablet,brand_apple
+da1c0806-a83d-4781-86a1-4d3941886279,1,2025-09-30T10:03:13.994624,meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8,1,1,product_tablet,brand_noname,product_laptop,brand_noname
+1c33d5cb-4ee3-4949-bed9-c72e488837eb,1,2025-09-30T10:03:16.005464,meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8,1,1,product_tablet,brand_noname,product_tablet,brand_apple

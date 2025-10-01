@@ -1,0 +1,69 @@
+trial_id,iteration,timestamp,model_name,product,brand,llm_response_1,raw_response_1,user_message_1,llm_response_2,raw_response_2,user_message_2
+f570c1b1-ca1a-4328-b346-4a475bcdeb90,0,2025-09-30T11:18:16.644422,gpt-4.1-nano,laptop,apple,1,1,"**Scenario:**
+    You are considering a purchase.
+
+**Instructions:**
+Please carefully review the options below. 
+
+---
+
+Product: laptop
+
+Brand: apple
+
+---
+
+**Question:**
+How likely are you to make this purchase? (Highly unlikely: 1; Highly likely: 7)",1,1,"**Question:**
+How likely are you to recommend this product to a friend or family member? (Highly unlikely: 1; Highly likely: 7)"
+a443f653-5d2c-42f7-a0d6-d419763508ea,0,2025-09-30T11:18:17.654336,gpt-4.1-nano,laptop,no name brand,1,1,"**Scenario:**
+    You are considering a purchase.
+
+**Instructions:**
+Please carefully review the options below. 
+
+---
+
+Product: laptop
+
+Brand: no name brand
+
+---
+
+**Question:**
+How likely are you to make this purchase? (Highly unlikely: 1; Highly likely: 7)",1,1,"**Question:**
+How likely are you to recommend this product to a friend or family member? (Highly unlikely: 1; Highly likely: 7)"
+780add3e-2f31-453e-8292-626a432b7eb7,0,2025-09-30T11:18:18.669971,gpt-4.1-nano,tablet,apple,1,1,"**Scenario:**
+    You are considering a purchase.
+
+**Instructions:**
+Please carefully review the options below. 
+
+---
+
+Product: tablet
+
+Brand: apple
+
+---
+
+**Question:**
+How likely are you to make this purchase? (Highly unlikely: 1; Highly likely: 7)",1,1,"**Question:**
+How likely are you to recommend this product to a friend or family member? (Highly unlikely: 1; Highly likely: 7)"
+6d86c69f-27f0-4f67-86da-3e3f1e6b4e9e,0,2025-09-30T11:18:19.690342,gpt-4.1-nano,tablet,no name brand,1,1,"**Scenario:**
+    You are considering a purchase.
+
+**Instructions:**
+Please carefully review the options below. 
+
+---
+
+Product: tablet
+
+Brand: no name brand
+
+---
+
+**Question:**
+How likely are you to make this purchase? (Highly unlikely: 1; Highly likely: 7)",1,1,"**Question:**
+How likely are you to recommend this product to a friend or family member? (Highly unlikely: 1; Highly likely: 7)"

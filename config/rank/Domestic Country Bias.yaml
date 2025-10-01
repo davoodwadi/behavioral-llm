@@ -1,0 +1,100 @@
+#
+paper_url:
+# use larger k to randomize display order
+k: 1
+sleep_amount: 0.1
+test: true
+models_to_test:
+  - "openai-gpt-4.1-nano"
+  - "anthropic-claude-3-5-haiku-20241022"
+  - "google-gemini-2.5-flash-lite"
+  # - "google-gemini-2.5-flash"
+  # - "google-gemini-2.5-pro"
+  # - "deepinfra-Qwen/Qwen3-Next-80B-A3B-Instruct"
+  # - "deepinfra-deepseek-ai/DeepSeek-V3.1-Terminus"
+  # - "deepinfra-meta-llama/Llama-4-Scout-17B-16E-Instruct"
+  # - "deepinfra-meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
+  # - "deepinfra-moonshotai/Kimi-K2-Instruct-0905"
+choice_experiment_setup:
+  # These "factors" are now the attributes that make up a single choice/product.
+  block_variables:
+    product:
+      levels:
+        - name: cars
+          value: car
+        # - name: food_products
+        #   value: food
+        # - name: tv_set
+        #   value: TV sets
+        # - name: toiletries
+        #   value: toiletries
+        # - name: fashion_wear
+        #   value: fashion wear
+        # - name: toys
+        #   value: toys
+        # - name: DIY
+        #   value: DIY equipment/tools
+        # - name: furniture
+        #   value: furniture
+  factors_to_rank:
+    COO:
+      levels:
+        Britain: |
+          Made in Britain
+        US: |
+          Made in the United States
+        France: |
+          Made in France
+        Germany: |
+          Made in Germany
+        Japan: |
+          Made in Japan
+        Italy: |
+          Made in Italy
+        China: |
+          Made in China
+
+  random_attributes:
+  #   price:
+  #     levels:
+  #       expensive: |
+  #         price: $100,000
+  #       cheap: |
+  #         price: $15,000
+  #   horsepower:
+  #     levels:
+  #       high: |
+  #         horsepower: 1000
+  #       low: |
+  #         horsepower: 100
+
+  # This template defines how to assemble the description for a SINGLE choice.
+  # The placeholders {attribute_name} will be filled with the text from the levels above.
+  choice_composition_template:
+    - "{product}"
+    - "{horsepower}"
+    - "{price}"
+    - "{COO}"
+    # - "{XYZ}"
+
+randomization:
+  # If true, the position of each option within the ranking prompt will be randomized for each trial.
+  presentation_order: true
+# This section defines the overall prompt that presents the two choices.
+prompts:
+  system_prompt: "You are a consumer in a market research study. Your task is to rank the options given. Please respond with ONLY the array of the rankings (most preferred to least preferred). Do not provide any other text, explanation, or punctuation."
+  # This is the main template for the user prompt.
+  # It contains placeholders for the fully-formed descriptions of the choices.
+  user_prompt_template: |
+    **Scenario:**
+    You are considering a purchase.
+
+    **Instructions:**
+    Please carefully review the options below. 
+    Based on the information provided, rank your preference from most preferred to least preferred.
+
+    {rank_choices}
+    ---
+
+    **Question:**
+    How would you rank these items? (Respond with a JSON array of integers as ranks)

@@ -1,0 +1,47 @@
+segments:
+- segment_label: Fixed Segment 1
+  index: 1
+  segment_text: ''
+- segment_label: Choice 1 Text
+  index: 1
+  segment_text: ''
+  segment_text_inserted: ''
+- segment_label: Choice 2 Text
+  index: 2
+  segment_text: ''
+  segment_text_inserted: ''
+- segment_label: Choice 3 Text
+  index: 3
+  segment_text: ''
+  segment_text_inserted: ''
+- segment_label: Fixed Segment 2
+  index: 2
+  segment_text: ''
+system_prompt: ''
+factors_list:
+- - product
+  - - product: laptop
+    - product: tablet
+- - coo
+  - - coo: China
+    - coo: Canada
+    - coo: France
+factor_products:
+- !!python/tuple
+  - product: laptop
+  - coo: China
+- !!python/tuple
+  - product: laptop
+  - coo: Canada
+- !!python/tuple
+  - product: laptop
+  - coo: France
+- !!python/tuple
+  - product: tablet
+  - coo: China
+- !!python/tuple
+  - product: tablet
+  - coo: Canada
+- !!python/tuple
+  - product: tablet
+  - coo: France

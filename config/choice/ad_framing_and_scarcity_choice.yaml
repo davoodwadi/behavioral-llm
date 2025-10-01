@@ -1,0 +1,75 @@
+k: 2
+sleep_amount: 0.1
+test: true
+# 1. Define the LLMs (subjects)
+models_to_test:
+  - "openai-gpt-4.1-nano"
+  - "anthropic-claude-3-5-haiku-20241022"
+  - "google-gemini-2.5-flash-lite"
+  - "google-gemini-2.5-flash"
+  - "google-gemini-2.5-pro"
+  - "deepinfra-Qwen/Qwen3-Next-80B-A3B-Instruct"
+  - "deepinfra-deepseek-ai/DeepSeek-V3.1-Terminus"
+  - "deepinfra-meta-llama/Llama-4-Scout-17B-16E-Instruct"
+  - "deepinfra-meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
+  - "deepinfra-moonshotai/Kimi-K2-Instruct-0905"
+
+# NEW SECTION: Defines the setup for the choice experiment
+choice_experiment_setup:
+  # These "factors" are now the attributes that make up a single choice/product.
+  core_attributes:
+    scarcity:
+      levels:
+        high_scarcity: |
+          Coffee shop has **three stores**.
+        low_scarcity: |
+          Coffee shop has **500 stores**.
+    longevity:
+      levels:
+        high_longevity: |
+          The establishment is **still owned by the founder**.
+          The **first three employees are still with the company**.
+          The coffee shop has maintained its **original mission of friendly service in a comfortable environment**.
+        low_longevity: |
+          The establishment was **a restaurant prior to being a coffee shop** and might change back.
+          **Ownership has changed several times**.
+
+  randomized_attributes:
+    brand:
+      # These values will be shuffled and assigned to the two choices in a pair.
+      values: ["Cafe ABC", "Cafe XYZ"]
+
+  # This template defines how to assemble the description for a SINGLE choice.
+  # The placeholders {attribute_name} will be filled with the text from the levels above.
+  choice_composition_template:
+    - "{brand}"
+    - "{scarcity}"
+    - "{longevity}"
+
+randomization:
+  # If true, the position (Option 1 vs Option 2) will be randomized for each trial.
+  presentation_order: true
+# This section defines the overall prompt that presents the two choices.
+prompts:
+  system_prompt: "You are a consumer in a market research study. Your task is to choose between two options. Please respond with ONLY the number of the option you would choose (1 or 2). Do not provide any other text, explanation, or punctuation."
+
+  # This is the main template for the user prompt.
+  # It contains placeholders for the fully-formed descriptions of Choice 1 and Choice 2.
+  user_prompt_template: |
+    **Scenario:**
+    You are considering visiting a cafe.
+
+    **Instructions:**
+    Please carefully review the two options below. 
+    Based on the information provided, decide which cafe you would be more likely to visit.
+
+    ---
+    **Option 1**
+    {choice_1_details}
+    ---
+    **Option 2**
+    {choice_2_details}
+    ---
+
+    **Question:**
+    Which option do you choose? (Respond with 1 or 2)

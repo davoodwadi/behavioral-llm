@@ -1,0 +1,8 @@
+altair
+pandas
+streamlit
+PyYAML
+tqdm
+openai
+anthropic
+google-genai

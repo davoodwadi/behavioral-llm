@@ -1,0 +1,44 @@
+system_prompt: "You are a consumer in a market research study. Your task is to answer\
+  \ questions based on the information provided. \n\nPlease respond with ONLY the\
+  \ number of the option you would choose. Do not provide any other text, explanation,\
+  \ or punctuation."
+factors_list:
+- - product
+  - - product|name: product_laptop
+      product|text: laptop
+    - product|name: product_tablet
+      product|text: tablet
+- - brand
+  - - brand|name: brand_apple
+      brand|text: apple
+    - brand|name: brand_noname
+      brand|text: no name brand
+segments:
+- segment_label: Segment
+  segment_text: "**Scenario:**\n    You are considering a purchase.\n\n**Instructions:**\n\
+    Please carefully review the options below. "
+  segment_id: 5b8fd
+- segment_label: Treatment Segment
+  segment_text: 'Product: {product}
+
+
+    Brand: {brand}'
+  segment_id: 4b6cd
+- segment_label: Question Segment
+  segment_text: '**Question:**
+
+    How likely are you to make this purchase? (Highly unlikely: 1; Highly likely:
+    7)'
+  segment_id: 5260c
+- segment_label: Question Segment
+  segment_text: '**Question:**
+
+    How likely are you to recommend this product to a friend or family member? (Highly
+    unlikely: 1; Highly likely: 7)'
+  segment_id: d2eeb
+k: 1
+test: false
+sleep_amount: 1.0
+models_to_test:
+- test-test
+paper_url: https://doi.org/10.1177/00920703032576
