@@ -37,7 +37,6 @@ is_prod = "SPACE_ID" in os.environ
 # Initialize session state flags
 if 'is_running' not in st.session_state:
     st.session_state.is_running = False
-# --- Utility Functions (Simulating your main_choice.py logic) ---
 
 # Get the path to the 'config' directory (assuming it's relative to the app file)
 APP_FILE = Path(__file__)
@@ -59,6 +58,7 @@ ALL_MODELS = [
 ]
 if not is_prod:
     ALL_MODELS.append('test-test')
+
 st.session_state['api_keys'] = {m.split('-')[0]:None for m in ALL_MODELS}
 
 Round_Types = {
@@ -77,10 +77,6 @@ factors_to_load_dict = dict()
 factors_to_load_dict['mixed'] = [
     'system_prompt',
     'rounds',
-    # 'factors_list_ranking',
-    # 'factors_list_choice',
-    # 'factors_list_scales',
-    # 'block_variable',
     'k', 
     'test', 
     'sleep_amount',
@@ -152,12 +148,8 @@ def show_experiment_configs_selectors():
                 # st.write(st.session_state['api_keys'])
         # 
         st.session_state.paper_url = st.text_input("Paper URL (optional)", value=st.session_state.paper_url)
-        if st.session_state.page == 'ranking':
-            st.session_state.randomize = st.checkbox('Randomize Items Displayed in Ranking', st.session_state.randomize)
-        elif st.session_state.page == 'choice':
-            st.session_state.randomize = st.checkbox('Randomize Items Displayed in Choices', st.session_state.randomize)
-        elif st.session_state.page == 'mixed':
-            st.session_state.randomize = st.checkbox('Randomize Items Displayed to the LLM', st.session_state.randomize)
+
+        st.session_state.randomize = st.checkbox('Randomize Items Displayed in Ranking/Choice Segments', st.session_state.randomize)
 
 
 def reset_config():
@@ -167,8 +159,7 @@ def reset_config():
     # Reset all relevant state variables from the new config
     for factor_to_load in config.keys():
         st.session_state[factor_to_load] = config.get(factor_to_load)
-        # st.write(factor_to_load)
-    # st.write(config.keys())
+    # st.write(config['k'])
     st.rerun()
     
 def show_segments(Segment_Types):
@@ -408,8 +399,8 @@ def show_add_new_segment_to_round(Segment_Types, r):
 
 
 def get_config_to_save():
-    factors_to_load = factors_to_load_dict[st.session_state.page]
-    config = load_experiment_config(st.session_state.selected_config_path)
+    factors_to_load = factors_to_load_dict['mixed']
+    # config = load_experiment_config(st.session_state.selected_config_path)
     config_to_save = dict()
     for factor_to_load in factors_to_load:
         config_to_save[factor_to_load] = st.session_state.get(factor_to_load)
@@ -588,20 +579,6 @@ def show_experiment_execution(selected_config_path, experiment_type='mixed'):
                 key='download-csv',
                 width='stretch',
             )
-
-def run_dummy():
-    st.session_state.results = []
-    try:
-        for i in range(10):
-            # REQUEST STOP
-            if st.session_state.stop_requested: break
-            # REQUEST STOP
-
-            st.write(i)
-            st.session_state.results.append(i)
-            time.sleep(2.)
-    finally:
-        st.session_state.is_running = False
 
 def start_run_callback():
     st.session_state.is_running = True
@@ -1094,144 +1071,13 @@ def render_mixed_experiment(selected_config_path):
         show_round(current_round, round_counter)
 
     show_add_round()
- 
-    # with st.expander(f'### Text for LLM Sample'):
-    #     for i, current_round in enumerate(st.session_state.rounds):
-    #         show_sample_mixed(current_round, i)
 
     config_to_save = get_config_to_save()
     # st.write(config_to_save)
     show_download_save_config(config_to_save, selected_config_path)
     show_mixed_experiment_execution(selected_config_path)
 
-def render_scales_experiment(selected_config_path):
-    st.markdown("# Run a Scales Experiment")
-    st.markdown("**Select a configuration file, choose the LLMs, and modify the run parameters.**")
-       
-    st.file_uploader(
-        "Upload a YAML configuration file for a predefined experiment.",
-        type=['yaml', 'yml'],
-        key="yaml_uploader",  # A unique key is required for on_change
-        on_change=process_uploaded_yaml # The callback function
-    )
-
-    with st.expander('System Prompt'):
-        st.session_state.system_prompt = st.text_area(
-            label='System Prompt', 
-            value=st.session_state.system_prompt, 
-            placeholder='''Type in your System Prompt''',
-            key=f'scales_system_prompt' 
-        )
-
-    show_experiment_configs_selectors()
-
-    with st.expander("# Factors"):
-        show_factor_combinations()
-        show_factors_and_levels()
-        show_add_factor()
-
-    with st.expander('### User Message'):
-        st.info('Use `{factor_name}` to add placeholders for factors\n\nExample: {product} or {price}')
-
-        Segment_Types = ['Segment', 'Treatment Segment', 'Question Segment']
-
-        show_segments(Segment_Types)
-        show_add_new_segment(Segment_Types)
-
-    show_sample_scales('factors_list', 'scales')
-
-    config_to_save = get_config_to_save()
-    # st.write(config_to_save)
-    show_download_save_config(config_to_save, selected_config_path)
-    show_experiment_execution(selected_config_path, experiment_type='scales')
    
-def render_choice_experiment(selected_config_path):
-    st.markdown("# Run a Choice Experiment")
-    st.markdown("**Select a configuration file, choose the LLMs, and modify the run parameters.**")
-       
-    st.file_uploader(
-        "Upload a YAML configuration file for a predefined experiment.",
-        type=['yaml', 'yml'],
-        key="yaml_uploader",  # A unique key is required for on_change
-        on_change=process_uploaded_yaml # The callback function
-    )
-
-    with st.expander('System Prompt'):
-        st.session_state.system_prompt = st.text_area(
-            label='System Prompt', 
-            value=st.session_state.system_prompt, 
-            placeholder='''Type in your System Prompt''',
-            key=f'choice_system_prompt' 
-        )
-
-    show_experiment_configs_selectors()
-
-    with st.expander("# Factors"):
-        show_factor_combinations()
-        show_factors_and_levels()
-        show_add_factor()
-
-    with st.expander('### User Message'):
-        st.info('Use `{factor_name}` to add placeholders for factors\n\nExample: {product} or {price}')
-
-        Segment_Types = ['Fixed Segment', 'Choice Options']
-
-        show_segments(Segment_Types)
-        show_add_new_segment(Segment_Types)
-
-    show_choice_combinations_details()
-    st.write('---')
-
-    show_sample_choice('factors_list', 'choice')
-
-    config_to_save = get_config_to_save()
-    # st.write(config_to_save)
-    show_download_save_config(config_to_save, selected_config_path)
-    show_experiment_execution(selected_config_path, experiment_type='choice')
-       
-def render_ranking_experiment(selected_config_path):
-    st.markdown("# Run a Ranking Experiment")
-    st.markdown("**Select a configuration file, choose the LLMs, and modify the run parameters.**")    
-
-    st.file_uploader(
-        "Upload a YAML configuration file for a predefined experiment.",
-        type=['yaml', 'yml'],
-        key="yaml_uploader",  # A unique key is required for on_change
-        on_change=process_uploaded_yaml # The callback function
-    )
-
-    with st.expander('System Prompt'):
-        st.session_state.system_prompt = st.text_area(
-            label='System Prompt', 
-            value=st.session_state.system_prompt, 
-            placeholder='''Type in your System Prompt''',
-            key=f'ranking_system_prompt' 
-        )
-    
-    show_experiment_configs_selectors()
-    
-    with st.expander("# Factor to Rank"):
-        show_num_factor_items_to_rank()
-        show_factors_and_levels()
-        show_add_factor()
-
-    with st.expander("# Block Variable"):
-        show_block_variable()
-
-    with st.expander('### User Message'):
-        st.info('Use `{factor name}` and `{block variable name}` to add placeholders for their items.\n\nExample: You are shopping for a {product} from {price}')
-
-        Segment_Types = ['Fixed Segment', 'Ranking Segment']
-
-        show_segments(Segment_Types)
-        show_add_new_segment(Segment_Types)
-
-    show_sample_rank('factors_list', 'ranking')
-
-    config_to_save = get_config_to_save()
-    # st.write(config_to_save)
-    show_download_save_config(config_to_save, selected_config_path)
-    show_experiment_execution(selected_config_path, experiment_type='ranking')
      
 def main():
     config_path = config_paths['mixed']
