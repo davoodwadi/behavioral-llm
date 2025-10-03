@@ -9,8 +9,8 @@ from openai import OpenAI
 import anthropic
 from google import genai
 from google.genai import types
+import streamlit as st
 
-# exit(1)
 @dataclass
 class LLMResponse:
     """Standardized response object for all LLM queries."""
@@ -41,10 +41,14 @@ class OpenAIModel(LLM):
         self.client = OpenAI(api_key=final_api_key)
 
     def query(self, system_prompt: str, user_prompt: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> LLMResponse:
-        messages = [{"role": "system", "content": system_prompt}]
+        # st.write(conversation_history)
+        # messages = [{"role": "system", "content": system_prompt}]
+        
+        # messages.append({"role": "user", "content": user_prompt})
+        
+        # if conversation_history -> use this instead of system_prompt and user_prompt
         if conversation_history:
-            messages.extend(conversation_history)
-        messages.append({"role": "user", "content": user_prompt})
+            messages = conversation_history
 
         try:
             start_time = time.time()
@@ -76,16 +80,18 @@ class AnthropicModel(LLM):
 
     def query(self, system_prompt: str, user_prompt: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> LLMResponse:
         # Anthropic API has a dedicated 'system' parameter
-        messages = []
-        if conversation_history:
-            messages.extend(conversation_history)
-        messages.append({"role": "user", "content": user_prompt})
+        # messages = []
+        # if conversation_history:
+        #     messages.extend(conversation_history)
+        # messages.append({"role": "user", "content": user_prompt})
 
+        if conversation_history:
+            messages = conversation_history
         try:
             start_time = time.time()
             response = self.client.messages.create(
                 model=self.model_name,
-                system=system_prompt,
+                # system=system_prompt,
                 messages=messages,
                 max_tokens=1024, # Anthropic requires max_tokens
             )
@@ -138,13 +144,18 @@ class TestModel(LLM):
         # self.client = OpenAI(api_key=final_api_key)
 
     def query(self, system_prompt: str, user_prompt: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> LLMResponse:
-        messages = [{"role": "system", "content": system_prompt}]
+        # messages = [{"role": "system", "content": system_prompt}]
+        # if conversation_history:
+        #     messages.extend(conversation_history)
+        # messages.append({"role": "user", "content": user_prompt})
+
         if conversation_history:
-            messages.extend(conversation_history)
-        messages.append({"role": "user", "content": user_prompt})
+            messages = conversation_history
+        # st.write(messages)
+        # print(messages) 
 
         try:
-            start_time = time.time()
+            start_time = time.time() 
             response = '[1,2,4,3,5,6,7]'
             end_time = time.time()
             # print('*****************')
