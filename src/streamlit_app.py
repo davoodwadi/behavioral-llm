@@ -1234,64 +1234,18 @@ def render_ranking_experiment(selected_config_path):
     show_experiment_execution(selected_config_path, experiment_type='ranking')
      
 def main():
-    # Set up session state for simple navigation
-    DEFAULT_PAGE = 'mixed'
-    page_index = EXPERIMENT_TYPES.index(DEFAULT_PAGE)
-    if 'page' not in st.session_state:
-        st.session_state.page = EXPERIMENT_TYPES[page_index]
-        config_path = config_paths[st.session_state.page]
-        config = load_experiment_config(config_path)
+    config_path = config_paths['mixed']
+    config = load_experiment_config(config_path)
+
+    # Store the current config path in session_state if needed later
+    st.session_state.selected_config_path = config_path
         
-        # Reset all relevant state variables from the new config
-        for factor_to_load in config.keys():
-            st.session_state[factor_to_load] = config.get(factor_to_load)
-        
-        # Store the current config path in session_state if needed later
-        st.session_state.selected_config_path = config_path
-
-    # Sidebar Navigation
-    with st.sidebar:
-        previous_page = st.session_state.page
-
-        navigation_choice = st.radio(
-            "Select your experiment type:",
-            [et.capitalize() for et in EXPERIMENT_TYPES],
-            index=EXPERIMENT_TYPES.index(st.session_state.page),
-        )
-        st.session_state.page = navigation_choice.lower()
-
-        st.markdown("---")
-        st.markdown("Developed for the Behavioral LLM Manuscript.")
+    # Reset all relevant state variables from the new config
+    for factor_to_load in config.keys():
+        st.session_state[factor_to_load] = config.get(factor_to_load)
     
-    # If the page has changed since the last run, reload the config.
-    # This is the core logic that replaces the sidebar_changed flag.
-
-    if previous_page != st.session_state.page:
-        # print(f"Page changed from '{previous_page}' to '{st.session_state.page}'. Reloading config.")
-    
-        config_path = config_paths[st.session_state.page]
-        config = load_experiment_config(config_path)
-        
-        # Reset all relevant state variables from the new config
-        for factor_to_load in config.keys():
-            # print(factor_to_load, 'changed to:', config.get(factor_to_load))
-            st.session_state[factor_to_load] = config.get(factor_to_load)
-        
-        # Store the current config path in session_state if needed later
-        st.session_state.selected_config_path = config_path
-
-        # We can force a rerun here to ensure a clean slate, though it's often not necessary
-        st.rerun()
-
-    # Render the selected page
-    if st.session_state.page == 'mixed':
-        render_mixed_experiment(selected_config_path=config_paths['mixed'])
-    elif st.session_state.page == 'choice':
-        render_choice_experiment(selected_config_path=config_paths['choice'])
-    elif st.session_state.page == 'ranking':
-        render_ranking_experiment(selected_config_path=config_paths['ranking'])
-    elif st.session_state.page == 'scales':
-        render_scales_experiment(selected_config_path=config_paths['scales'])
+    # Render the page
+    render_mixed_experiment(selected_config_path=config_paths['mixed'])
 
 def load_experiment_config(path_str):
     """Loads a YAML config file content from a given file path."""
@@ -1312,66 +1266,3 @@ if __name__ == "__main__":
     main()
 
 
-
-
-
-    #     segments1 = [
-    #         {
-    #             "segment_label": "Fixed Segment",
-    #             "segment_text": """**Scenario:**\n    You are considering a purchase.\n\n**Instructions:**\n\
-    #   Please carefully review the options below. \nBased on the information provided,\
-    #   \ rank your preference from most preferred to least preferred.""",
-    #             "segment_id": "5b8fd",
-    #         },
-    #         {
-    #             "segment_label": "Ranking Segment",
-    #             "segment_text": """Product: {brand}
-    #             {COO}""",
-    #             "segment_id": "29fe8",
-    #         },
-    #         {
-    #             'segment_label': 'Fixed Segment',
-    #             "segment_text": """ **Question:**\n    How would you rank these items? (Respond with\
-    #   \ a JSON array of integers as ranks)\n""",
-    #             "segment_id": "7569cccc",
-    #         }
-    #     ]
-    #     segments2 = [
-    #         {
-    #             "segment_label": "Fixed Segment",
-    #             "segment_text": """**Scenario:**\n    You are considering a purchase.\n\n**Instructions:**\n\
-    #   Please carefully review the options below. \nBased on the information provided,\
-    #   \ rank your preference from most preferred to least preferred.""",
-    #             "segment_id": "5b8fdd",
-    #         },
-    #         {
-                
-    #             "segment_label": "Choice Segment",
-    #             "segment_text": """Product: {brand}
-
-    #             {COO}""",
-    #             "segment_id": "29fe8d",
-    #         },
-    #     ]
-    #     segments3 = [
-    #         {
-    #             "segment_label": "Fixed Segment",
-    #             "segment_text": """**Scenario:**\n    You are considering a purchase.\n\n**Instructions:**\n\
-    #   Please carefully review the options below. \nBased on the information provided,\
-    #   \ rank your preference from most preferred to least preferred.""",
-    #             "segment_id": "5b8fdsdfd",
-    #         },
-    #         {
-                
-    #             "segment_label": "Treatment Segment",
-    #             "segment_text": """Product: {brand}
-
-    #             {COO}""",
-    #             "segment_id": "29fsdfsde8d",
-    #         },
-    #     ]
-    #     rounds = [
-    #         {"text":'Round ranking', 'key':'1', 'segments':segments1[:], 'round_type':'ranking'}, 
-    #         {"text":'Round choice','key':'2', 'segments':segments2[:], 'round_type':'choice'},
-    #         {"text":'Round scales','key':'3', 'segments':segments3[:], 'round_type':'scales'},
-    #     ]
