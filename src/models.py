@@ -48,7 +48,8 @@ class OpenAIModel(LLM):
         
         # if conversation_history -> use this instead of system_prompt and user_prompt
         if conversation_history:
-            messages = conversation_history
+            messages = [{"role": "system", "content": system_prompt}]
+            messages.extend(conversation_history)
 
         try:
             start_time = time.time()
@@ -91,7 +92,7 @@ class AnthropicModel(LLM):
             start_time = time.time()
             response = self.client.messages.create(
                 model=self.model_name,
-                # system=system_prompt,
+                system=system_prompt,
                 messages=messages,
                 max_tokens=1024, # Anthropic requires max_tokens
             )
@@ -150,7 +151,8 @@ class TestModel(LLM):
         # messages.append({"role": "user", "content": user_prompt})
 
         if conversation_history:
-            messages = conversation_history
+            messages = [{"role": "system", "content": system_prompt}]
+            messages.extend(conversation_history)
         # st.write(messages)
         # print(messages) 
 

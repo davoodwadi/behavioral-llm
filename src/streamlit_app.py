@@ -863,7 +863,6 @@ def show_add_round():
                 st.rerun()
 
 
-
 def run_experiments():
     api_keys = st.session_state['api_keys']
     models_objects_to_test = [get_model(name, api_keys) for name in st.session_state.models_to_test]
@@ -881,20 +880,11 @@ def run_experiments():
             rounds_factor_combinations.append(combinations)
         elif current_round['round_type'] == 'scales':
             factor_products = get_choice_factor_products(current_round['factors_list'])
-            # st.write(factor_products)
             rounds_factor_combinations.append(factor_products)
             
-    all_combinations_length_display = ' x '.join([str(len(combo)) for combo in rounds_factor_combinations])
-    st.write(all_combinations_length_display)
     
     all_rounds_combinations = list(itertools.product(*rounds_factor_combinations))
-    all_rounds_combinations = all_rounds_combinations[:10]
-    # st.write('all_rounds_combinations', all_rounds_combinations)
     total_iterations = total_models_to_test * len(all_rounds_combinations) * st.session_state.k
-    st.write('k', st.session_state.k)
-    st.write('Total Models', total_models_to_test)
-    st.write('Total Combinations', len(all_rounds_combinations))
-    st.write('Total Iterations', total_iterations)
     
     progress_text = f"Running {total_iterations} experiments..."
     my_bar = st.progress(0, text=progress_text)
@@ -928,7 +918,7 @@ def run_combination_k_times(rounds_combination, k, model, results, progress_trac
 
 def run_combination(rounds_combination, iteration, model, results, progress_tracker):
     # start round
-    list_of_messages = [{'role':"system", 'content':st.session_state['system_prompt']}]
+    list_of_messages = []
     trial_data = {
             "trial_id": str(uuid.uuid4()),
             "timestamp": datetime.now().isoformat(),
@@ -964,21 +954,30 @@ def run_combination(rounds_combination, iteration, model, results, progress_trac
         list_of_messages.append({'role':'user','content':formatted_text}) # user_message
 
         llm_response, parsed_response = call_model_for_user_message(model, '', current_round, history=list_of_messages)
-
+        # st.write(llm_response.content)
+        # st.write(parsed_response)
         list_of_messages.append({'role':'assistant', 'content': llm_response.content})
 
-        trial_data[f'round{j}_{current_round["round_type"]}_llm_response'] = parsed_response
+        trial_data[f'round{j}_{current_round["round_type"]}_llm_response'] = parsed_response if parsed_response else None
+        trial_data[f'round{j}_{current_round["round_type"]}_llm_raw_response'] = llm_response.content
 
         if current_round["round_type"]=='ranking':
-            trial_data[f'round{j}_llm_rank'] = [ranking_display_order[response-1] for response in parsed_response]
+            if parsed_response:
+                try:
+                    trial_data[f'round{j}_llm_rank'] = [ranking_display_order[response-1] for response in parsed_response]
+                except Exception as e:
+                    trial_data[f'round{j}_llm_rank'] = e
         elif current_round["round_type"]=='choice':
-            trial_data[f'round{j}_llm_choice'] = choices_display_order[parsed_response-1]
-
+            if parsed_response:
+                try:
+                    trial_data[f'round{j}_llm_choice'] = choices_display_order[parsed_response-1]
+                except Exception as e:
+                    trial_data[f'round{j}_llm_choice'] = e
     results.append(trial_data)
 
     progress_tracker.counter+=1
     progress_made = int((progress_tracker.counter/progress_tracker.total_iterations)*100)
-    progress_tracker.progress_bar.progress(progress_made, text=f"{progress_tracker.counter} experiments executed...")
+    progress_tracker.progress_bar.progress(progress_made, text=f"Experiments executed: {progress_tracker.counter}")
     # end round
 
 @dataclass
@@ -1037,8 +1036,54 @@ def call_model_for_user_message(model, user_message, current_round, history=[]):
         if 'error' in str(response_data.raw_response).lower():
             parsed_choice = None
         else:
-            parsed_choice = json.loads(response_data.content)
+            try:
+                parsed_choice = json.loads(response_data.content)
+            except Exception as e:
+                parsed_choice = e
     return response_data, parsed_choice
+
+def show_experiment_combinations():
+    models_to_test = st.session_state.models_to_test
+    total_models_to_test = len(models_to_test)
+
+    rounds = st.session_state.rounds
+
+    rounds_factor_combinations = []
+    for current_round in rounds:
+        if current_round['round_type'] == 'ranking':
+            factor_levels_rank_permutations = get_rank_permutations(current_round)
+            rounds_factor_combinations.append(factor_levels_rank_permutations)
+        elif current_round['round_type'] == 'choice':
+            combinations = get_choice_combinations(current_round)
+            rounds_factor_combinations.append(combinations)
+        elif current_round['round_type'] == 'scales':
+            factor_products = get_choice_factor_products(current_round['factors_list'])
+            rounds_factor_combinations.append(factor_products)
+            
+    all_combinations_length_display = ' x '.join([str(len(combo)) for combo in rounds_factor_combinations])
+    
+    all_rounds_combinations = list(itertools.product(*rounds_factor_combinations))
+    total_iterations = total_models_to_test * len(all_rounds_combinations) * st.session_state.k
+    k_value = st.session_state.k
+    # Use a container to group the experiment summary
+    with st.container(border=True):
+        st.subheader("Experiment Configuration Summary")
+
+        # Display the core parameters
+        st.markdown(f"**Parameter Dimensions:** `{all_combinations_length_display}`")
+        st.markdown(f"**k value:** `{k_value}`")
+
+        # Use a divider to separate parameters from metrics
+        st.divider()
+
+        # Use columns for a dashboard-like layout of the key metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label="Total Models", value=total_models_to_test)
+        with col2:
+            st.metric(label="Total Combinations", value=len(all_rounds_combinations))
+        with col3:
+            st.metric(label="Total Iterations", value=total_iterations)
 
 
 def render_mixed_experiment(selected_config_path):
@@ -1075,6 +1120,9 @@ def render_mixed_experiment(selected_config_path):
     config_to_save = get_config_to_save()
     # st.write(config_to_save)
     show_download_save_config(config_to_save, selected_config_path)
+
+    show_experiment_combinations()
+
     show_mixed_experiment_execution(selected_config_path)
 
    
@@ -1086,9 +1134,10 @@ def main():
     # Store the current config path in session_state if needed later
     st.session_state.selected_config_path = config_path
         
-    # Reset all relevant state variables from the new config
+    # On first render, Reset all relevant state variables from the new config
     for factor_to_load in config.keys():
-        st.session_state[factor_to_load] = config.get(factor_to_load)
+        if not st.session_state.get(factor_to_load):
+            st.session_state[factor_to_load] = config.get(factor_to_load)
     
     # Render the page
     render_mixed_experiment(selected_config_path=config_paths['mixed'])
