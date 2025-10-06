@@ -33,7 +33,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-is_prod = "SPACE_ID" in os.environ
+APP_ENVIRONMENT = os.environ.get('APP_ENV', 'dev') 
+
+# is_prod = "SPACE_ID" in os.environ
+is_prod = (APP_ENVIRONMENT == 'production')
 # Initialize session state flags
 if 'is_running' not in st.session_state:
     st.session_state.is_running = False
@@ -1070,8 +1073,8 @@ def show_experiment_combinations():
         st.subheader("Experiment Configuration Summary")
 
         # Display the core parameters
-        st.markdown(f"**Parameter Dimensions:** `{all_combinations_length_display}`")
-        st.markdown(f"**k value:** `{k_value}`")
+        st.markdown(f"**Combinations:** `{all_combinations_length_display}`")
+        st.markdown(f"**K value:** `{k_value}`")
 
         # Use a divider to separate parameters from metrics
         st.divider()
@@ -1087,7 +1090,7 @@ def show_experiment_combinations():
 
 
 def render_mixed_experiment(selected_config_path):
-    st.markdown("# Run a Mixed Experiment")
+    st.markdown("# Run a Behavioral Experiment on an LLM")
     st.markdown("**Select a configuration file, choose the LLMs, and modify the run parameters.**")
        
     st.file_uploader(
@@ -1138,6 +1141,8 @@ def main():
     for factor_to_load in config.keys():
         if not st.session_state.get(factor_to_load):
             st.session_state[factor_to_load] = config.get(factor_to_load)
+    
+    st.write('is_prod', is_prod)
     
     # Render the page
     render_mixed_experiment(selected_config_path=config_paths['mixed'])
