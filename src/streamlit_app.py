@@ -138,7 +138,11 @@ def show_experiment_configs_selectors():
         )
         st.session_state.test = st.toggle('Run Mock Experiments', value=st.session_state.test)
         st.session_state.sleep_amount = st.number_input('Amount to pause between LLM API calls (seconds)', value=st.session_state.sleep_amount, )
-        st.session_state.models_to_test = st.multiselect('LLMs to Test', ALL_MODELS, default=st.session_state.models_to_test)
+        models_to_test = st.session_state.models_to_test
+        filtered_models_to_test = [m for m in models_to_test if m in ALL_MODELS]
+        if not filtered_models_to_test:
+            filtered_models_to_test = ALL_MODELS[0]
+        st.session_state.models_to_test = st.multiselect('LLMs to Test', ALL_MODELS, default=filtered_models_to_test)
         # Based on st.session_state.models_to_test
         # get required api keys
         if not st.session_state.test:
@@ -422,10 +426,13 @@ def show_sample_rank(current_round, round_counter):
         block_variable_name = None
 
     # assume only 1 factor allowed for ranking
-    # factor_name, factor_levels = current_round['factors_list'][0]
-    # factor_levels_copy = factor_levels[:]
 
     factor_levels_rank_permutations = get_rank_permutations(current_round)
+    # st.write(factor_levels_rank_permutations)
+    
+    if not factor_levels_rank_permutations:
+        return
+    
     factor_levels_rank_permutation = random.choice(factor_levels_rank_permutations)
     # st.write(factor_levels_rank_permutation)
     if st.button('Refresh Sample', key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
@@ -449,6 +456,9 @@ def show_sample_choice(current_round, round_counter):
     # st.write(st.session_state.combinations[:2])
     combinations = get_choice_combinations(current_round)
     # st.write(len(combinations))
+    if not combinations:
+        return
+
     sample = random.choice(combinations)
 
     if st.session_state.randomize:
@@ -470,7 +480,12 @@ def show_sample_choice(current_round, round_counter):
     st.write('---')
 
 def show_sample_scales(current_round, round_counter):
-    factor_products = get_choice_factor_products(current_round['factors_list'])
+    factors_list = current_round.get('factors_list')
+    
+    if not factors_list:
+        return 
+    
+    factor_products = get_choice_factor_products(factors_list)
     factor_product = random.choice(factor_products)
 
     if st.button('Refresh Sample', key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
@@ -765,13 +780,20 @@ def get_choice_factor_products(factors_list):
 
 def get_choice_combinations(current_round):
     num_choices = get_num_choices(current_round)
-    factor_products = get_choice_factor_products(current_round['factors_list'])
+    factors_list = current_round.get('factors_list')
+    if factors_list:
+        factor_products = get_choice_factor_products(factors_list)
+    else:
+        factor_products = []
     combinations = list(itertools.combinations(factor_products, num_choices))
     combinations = [list(combo) for combo in combinations]
     return combinations
 
 def get_rank_permutations(current_round):
-    factor_name, factor_levels_rank = current_round['factors_list'][0]
+    factors_list = current_round.get('factors_list')
+    if not factors_list:
+        return []
+    factor_name, factor_levels_rank = factors_list[0]
     factor_levels_rank_permutations = list(itertools.permutations(factor_levels_rank, len(factor_levels_rank)))
     factor_levels_rank_permutations_list = [list(permutation) for permutation in factor_levels_rank_permutations]
     return factor_levels_rank_permutations_list
@@ -846,11 +868,49 @@ def show_round(current_round, round_counter):
             st.session_state.rounds = [r for r in st.session_state.rounds if r['key']!=key]
             st.rerun()
 
+def show_round_details(current_round, round_counter):
+    '''
+    '''
+    # with st.expander(f'Round {round_counter+1} - {current_round["round_type"].capitalize()}'):
+    st.write(f'Round Details: Round {round_counter+1} - {current_round["round_type"].capitalize()}')
+    round_type = current_round['round_type']
+    round_metadata = Round_Types[round_type]
+    round_segment_types = round_metadata['Segment_Types']
+
+    if round_type=='choice':
+        choices_shown_in_round = st.slider('Number of Choices Shown (*r*)', 2, key=f'slider_{round_counter}_{round_type}', help='''How many choices (r) to show to the LLM in this round. Maximum number of choices depends on n choose r (n: factor combination; r: choices shown to the LLM)''')
+        current_round['choices_shown_in_round'] = choices_shown_in_round
+    
+
+    with st.expander(f"# Factors for this Round"):
+        if current_round['round_type']=='ranking':
+            show_factor_items_ranking(current_round, round_counter)
+        elif current_round['round_type']=='choice':
+            show_factor_items_choice(current_round, round_counter)
+        elif current_round['round_type']=='scales':
+            show_factor_items_scales(current_round, round_counter)
+
+    with st.expander(f"# Segments for this Round"):
+
+        show_mixed_segments(round_segment_types, current_round, round_counter)
+        show_add_new_segment_to_round(round_segment_types, current_round)
+
+
+    with st.expander(f'# Sample Text for LLM'):
+        show_sample_mixed(current_round, round_counter)
+
+    # if st.button(f'Remove Round {round_counter+1} - {current_round["round_type"].capitalize()}', key=f'remove_round_{round_counter}', width='stretch'):
+    #     # get round key
+    #     key = current_round['key']
+    #     st.session_state.rounds = [r for r in st.session_state.rounds if r['key']!=key]
+    #     st.rerun()
+
 def show_add_round():
-    with st.container(border=True):
+    with st.expander('Add New Round'):
         col1, col2 = st.columns([1,1], vertical_alignment='bottom')
         with col1:
-            round_type = st.selectbox('New Round Type', [rt.capitalize() for rt in Round_Types.keys()], index=0, key='new round type selector').lower()
+            round_type = st.selectbox('Round Type', [rt.capitalize() for rt in Round_Types.keys()], index=0, key='new round type selector').lower()
+
         with col2:
             if st.button('Add Round', key=f'button_add_round_', width='stretch'):
                 all_keys = [int(ritem_value) for r in st.session_state.rounds for ritem_key, ritem_value in r.items() if ritem_key=='key']
@@ -861,10 +921,39 @@ def show_add_round():
                     factors_list = [],
                     round_type = round_type
                 )
+                if round_type == 'choice':
+                    new_round['choices_shown_in_round'] = 2
 
                 st.session_state.rounds.append(new_round)
+                st.session_state.selected_round = new_round
                 st.rerun()
 
+@st.dialog("Add New Round")
+def show_add_round_modal():
+    round_type = st.selectbox(
+        'Select Round Type', 
+        [rt.capitalize() for rt in Round_Types.keys()]
+    ).lower()
+
+    if st.button('Add Round', width='stretch'):
+        # --- Your existing logic for creating the round ---
+        all_keys = [int(r['key']) for r in st.session_state.rounds] if st.session_state.rounds else [0]
+        new_round_key = max(all_keys) + 1
+        new_round = dict(
+            key=new_round_key,
+            segments=[],
+            factors_list=[],
+            round_type=round_type
+        )
+        if round_type == 'choice':
+            new_round['choices_shown_in_round'] = 2
+
+        st.session_state.rounds.append(new_round)
+        st.session_state.selected_round = new_round
+        
+        # Close the dialog and rerun
+        st.session_state['show_add_round_dialog'] = False
+        st.rerun()
 
 def run_experiments():
     api_keys = st.session_state['api_keys']
@@ -1088,8 +1177,13 @@ def show_experiment_combinations():
         with col3:
             st.metric(label="Total Iterations", value=total_iterations)
 
+def show_toast():
+    if st.session_state.get('show_toast'):
+        st.toast(st.session_state.get('toast_text'))
+        st.session_state.show_toast = False
 
 def render_mixed_experiment(selected_config_path):
+    show_toast()
     st.markdown("# Run a Behavioral Experiment on an LLM")
     st.markdown("**Select a configuration file, choose the LLMs, and modify the run parameters.**")
        
@@ -1112,13 +1206,64 @@ def render_mixed_experiment(selected_config_path):
 
     show_experiment_configs_selectors()
 
-    # with st.expander('# User Message Rounds', expanded=True):
     st.write('## User Message Rounds')
+    if not st.session_state.get('selected_round'):
+        st.session_state['selected_round'] = st.session_state.rounds[0]
+    # st.write('selected round:', st.session_state['selected_round'])
 
-    for round_counter, current_round in enumerate(st.session_state.rounds):
-        show_round(current_round, round_counter)
+    with st.container(border=True):
+        col_master, col_details = st.columns(
+            [1,2], 
+            gap='large',
+            vertical_alignment='top',
+        )
+        with col_master:
+            row = st.columns([4, 1]) # Create a small column for the delete button
 
-    show_add_round()
+            for round_counter, current_round in enumerate(st.session_state.rounds):
+            
+                with row[0]: # round buttons
+                    # Check if this is the selected round
+                    is_selected = (current_round['key'] == st.session_state.selected_round['key'])
+                    
+                    # Set the button type accordingly
+                    button_type = "primary" if is_selected else "secondary"
+
+                    if st.button(
+                        f'Round {round_counter+1} - {current_round["round_type"].capitalize()}',
+                        key=f"round_btn_{current_round['key']}", # Always use a unique key for widgets in a loop
+                        type=button_type,
+                        use_container_width=True # 'width' is deprecated, use 'use_container_width'
+                    ):
+                        st.session_state.selected_round = current_round
+                        # Rerun to ensure the button style updates immediately
+                        st.rerun() 
+                    
+                    if is_selected:
+                        selected_round_counter = round_counter
+
+
+                with row[1]: # remove round
+                    if st.button("✕", key=f"del_{current_round['key']}", help="Delete this round"):
+                        removed_round = st.session_state.rounds.pop(round_counter)
+
+                        if not st.session_state.rounds:
+                            # Handle case where all rounds are deleted
+                            pass 
+                        else:
+                            st.session_state.selected_round = st.session_state.rounds[0]
+
+                        st.session_state.show_toast = True
+                        st.session_state.toast_text = f'Round {round_counter+1} - {current_round["round_type"].capitalize()} deleted'
+
+                        st.rerun()
+                        
+            with row[0]:
+                if st.button("Add New Round", use_container_width=True, type="secondary", key='add_round_modal_button'):
+                    show_add_round_modal()
+
+        with col_details:
+            show_round_details(st.session_state['selected_round'], selected_round_counter)
 
     config_to_save = get_config_to_save()
     # st.write(config_to_save)
@@ -1142,8 +1287,8 @@ def main():
         if not st.session_state.get(factor_to_load):
             st.session_state[factor_to_load] = config.get(factor_to_load)
     
-    st.write('is_prod', is_prod)
-    
+    # st.write('is_prod', is_prod)
+
     # Render the page
     render_mixed_experiment(selected_config_path=config_paths['mixed'])
 

@@ -1,162 +1,165 @@
-system_prompt: You are a consumer in a market research study. Your task is to rank
+system_prompt:
+  You are a consumer in a market research study. Your task is to rank
   the options given. Please respond with ONLY the array of the rankings (most preferred
   to least preferred). Do not provide any other text, explanation, or punctuation.
 rounds:
-- key: '1'
-  segments:
-  - segment_label: Fixed Segment
-    segment_text: "**Scenario:**\nYou are considering a purchase.\n\n**Instructions:**\n\
-      Please carefully review the options below. \nBased on the information provided,\
-      \ rank your preference from most preferred to least preferred."
-    segment_id: 5b8fd
-  - segment_label: Ranking Segment
-    segment_text: '{COO}'
-    segment_id: 29fe8
-  - segment_label: Fixed Segment
-    segment_text: '**Question:**
+  - key: "1"
+    segments:
+      - segment_label: Fixed Segment
+        segment_text:
+          "**Scenario:**\nYou are considering a purchase.\n\n**Instructions:**\n\
+          Please carefully review the options below. \nBased on the information provided,\
+          \ rank your preference from most preferred to least preferred."
+        segment_id: 5b8fd
+      - segment_label: Ranking Segment
+        segment_text: "{COO}"
+        segment_id: 29fe8
+      - segment_label: Fixed Segment
+        segment_text: "**Question:**
 
-      How would you rank these items? (Respond with a JSON array of integers as ranks) '
-    segment_id: 7569cccc
-  round_type: ranking
-  factors_list:
-  - - COO
-    - - COO|name: us
-        COO|text: Made in US
-      - COO|name: canada
-        COO|text: Made in Canada
-      - COO|name: china
-        COO|text: Made in China
-- key: '2'
-  segments:
-  - segment_label: Fixed Segment
-    segment_text: '**Scenario:**
+          How would you rank these items? (Respond with a JSON array of integers as ranks) "
+        segment_id: 7569cccc
+    round_type: ranking
+    factors_list:
+      - - COO
+        - - COO|name: us
+            COO|text: Made in US
+          - COO|name: canada
+            COO|text: Made in Canada
+          - COO|name: china
+            COO|text: Made in China
+  - key: "2"
+    segments:
+      - segment_label: Fixed Segment
+        segment_text: "**Scenario:**
 
-      You are considering a purchase.
-
-
-      **Instructions:**
-
-      Please carefully review the choices below. '
-    segment_id: 5b8fdd
-  - segment_label: Choice Segment
-    segment_text: 'Product: {Product}
+          You are considering a purchase.
 
 
-      {Brand}'
-    segment_id: 29fe8d
-    segment_text_inserted: 'Product: A car
+          **Instructions:**
+
+          Please carefully review the choices below. "
+        segment_id: 5b8fdd
+      - segment_label: Choice Segment
+        segment_text: "Product: {Product}
 
 
-      Samsung'
-  - segment_label: Fixed Segment
-    segment_text: Which choice would you choose? (Only output the digit corresponding
-      to the choice)
-    segment_id: 0256c
-  round_type: choice
-  choices_shown_in_round: 2
-  factors_list:
-  - - Product
-    - - Product|name: Laptop
-        Product|text: A laptop
-      - Product|name: Tablet
-        Product|text: A tablet
-      - Product|name: Automobile
-        Product|text: A car
-  - - Brand
-    - - Brand|name: apple
-        Brand|text: Apple
-      - Brand|name: samsung
-        Brand|text: Samsung
-  factor_products:
-  - - Product|name: Laptop
-      Product|text: A laptop
-    - Brand|name: apple
-      Brand|text: Apple
-  - - Product|name: Laptop
-      Product|text: A laptop
-    - Brand|name: samsung
-      Brand|text: Samsung
-  - - Product|name: Tablet
-      Product|text: A tablet
-    - Brand|name: apple
-      Brand|text: Apple
-  - - Product|name: Tablet
-      Product|text: A tablet
-    - Brand|name: samsung
-      Brand|text: Samsung
-  - - Product|name: Automobile
-      Product|text: A car
-    - Brand|name: apple
-      Brand|text: Apple
-  - - Product|name: Automobile
-      Product|text: A car
-    - Brand|name: samsung
-      Brand|text: Samsung
-- key: '3'
-  segments:
-  - segment_label: Fixed Segment
-    segment_text: '**Scenario:**
-
-      You are considering a purchase.
+          {Brand}"
+        segment_id: 29fe8d
+        segment_text_inserted: "Product: A car
 
 
-      **Instructions:**
+          Samsung"
+      - segment_label: Fixed Segment
+        segment_text:
+          Which choice would you choose? (Only output the digit corresponding
+          to the choice)
+        segment_id: 0256c
+    round_type: choice
+    choices_shown_in_round: 2
+    factors_list:
+      - - Product
+        - - Product|name: Laptop
+            Product|text: A laptop
+          - Product|name: Tablet
+            Product|text: A tablet
+          - Product|name: Automobile
+            Product|text: A car
+      - - Brand
+        - - Brand|name: apple
+            Brand|text: Apple
+          - Brand|name: samsung
+            Brand|text: Samsung
+    factor_products:
+      - - Product|name: Laptop
+          Product|text: A laptop
+        - Brand|name: apple
+          Brand|text: Apple
+      - - Product|name: Laptop
+          Product|text: A laptop
+        - Brand|name: samsung
+          Brand|text: Samsung
+      - - Product|name: Tablet
+          Product|text: A tablet
+        - Brand|name: apple
+          Brand|text: Apple
+      - - Product|name: Tablet
+          Product|text: A tablet
+        - Brand|name: samsung
+          Brand|text: Samsung
+      - - Product|name: Automobile
+          Product|text: A car
+        - Brand|name: apple
+          Brand|text: Apple
+      - - Product|name: Automobile
+          Product|text: A car
+        - Brand|name: samsung
+          Brand|text: Samsung
+  - key: "3"
+    segments:
+      - segment_label: Fixed Segment
+        segment_text: "**Scenario:**
 
-      Please carefully review the information below. '
-    segment_id: 5b8fdsdfd
-  - segment_label: Treatment Segment
-    segment_text: 'Product: {Product}
+          You are considering a purchase.
 
 
-      {Brand}'
-    segment_id: 29fsdfsde8d
-  - segment_label: Fixed Segment
-    segment_text: '**Question**
+          **Instructions:**
+
+          Please carefully review the information below. "
+        segment_id: 5b8fdsdfd
+      - segment_label: Treatment Segment
+        segment_text: "Product: {Product}
 
 
-      How willing are you to purchase this product? (1: Highly unwilling; 7: Highly
-      willing)'
-    segment_id: 2ec26
-  round_type: scales
-  factors_list:
-  - - Product
-    - - Product|name: cleaning
-        Product|text: Toilet Papers
-      - Product|name: tech
-        Product|text: Keyboard
-  - - Brand
-    - - Brand|name: tide
-        Brand|text: Tide
-      - Brand|name: finish
-        Brand|text: Finish
-  factor_products:
-  - - Product|name: cleaning
-      Product|text: Toilet Papers
-    - Brand|name: tide
-      Brand|text: Tide
-  - - Product|name: cleaning
-      Product|text: Toilet Papers
-    - Brand|name: finish
-      Brand|text: Finish
-  - - Product|name: tech
-      Product|text: Keyboard
-    - Brand|name: tide
-      Brand|text: Tide
-  - - Product|name: tech
-      Product|text: Keyboard
-    - Brand|name: finish
-      Brand|text: Finish
-- key: 4
-  segments:
-  - segment_label: Fixed Segment
-    segment_text: Follow up question
-    segment_id: a7b3a
-  factors_list: []
-  round_type: scales
+          {Brand}"
+        segment_id: 29fsdfsde8d
+      - segment_label: Fixed Segment
+        segment_text: "**Question**
+
+
+          How willing are you to purchase this product? (1: Highly unwilling; 7: Highly
+          willing)"
+        segment_id: 2ec26
+    round_type: scales
+    factors_list:
+      - - Product
+        - - Product|name: cleaning
+            Product|text: Toilet Papers
+          - Product|name: tech
+            Product|text: Keyboard
+      - - Brand
+        - - Brand|name: tide
+            Brand|text: Tide
+          - Brand|name: finish
+            Brand|text: Finish
+    factor_products:
+      - - Product|name: cleaning
+          Product|text: Toilet Papers
+        - Brand|name: tide
+          Brand|text: Tide
+      - - Product|name: cleaning
+          Product|text: Toilet Papers
+        - Brand|name: finish
+          Brand|text: Finish
+      - - Product|name: tech
+          Product|text: Keyboard
+        - Brand|name: tide
+          Brand|text: Tide
+      - - Product|name: tech
+          Product|text: Keyboard
+        - Brand|name: finish
+          Brand|text: Finish
+  - key: 4
+    segments:
+      - segment_label: Fixed Segment
+        segment_text: Follow up question
+        segment_id: a7b3a
+    factors_list: []
+    round_type: scales
 k: 1
 test: true
 sleep_amount: 0.1
 models_to_test:
-- test-test
+  - test-test
 randomize: true
 paper_url: https://doi.org/10.1177/0092070303257644
