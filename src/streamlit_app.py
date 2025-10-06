@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+
 from pathlib import Path
 import yaml
 import json
@@ -8,13 +10,13 @@ import uuid
 from io import StringIO
 
 from dataclasses import dataclass
+from collections import defaultdict
 from typing import List, Dict, Any, Optional
 
 import os 
+import re
 import time
 from datetime import datetime
-
-import threading
 
 from experiment_choice import StExperimentRunnerChoice, StExperimentRunnerRanking, StExperimentRunnerScales
 from experiment_runners import StExperimentRunnerMixed
@@ -76,8 +78,8 @@ Round_Types = {
     }
 }
         
-factors_to_load_dict = dict()
-factors_to_load_dict['mixed'] = [
+factors_to_save_dict = dict()
+factors_to_save_dict['mixed'] = [
     'system_prompt',
     'rounds',
     'k', 
@@ -86,6 +88,7 @@ factors_to_load_dict['mixed'] = [
     'models_to_test',
     'randomize',
     'paper_url',
+    'api_keys'
 ]
 
 if 'is_running' not in st.session_state:
@@ -120,11 +123,24 @@ def process_uploaded_yaml():
             string_data = stringio.read()
             yaml_data = yaml.safe_load(string_data)
             # st.write(yaml_data)
+            # store the config in state for reset_config
+            st.session_state['yaml_data'] = yaml_data
             # Update session state with the keys from the YAML file
             for state_var_name in yaml_data.keys():
-                if state_var_name in yaml_data:
-                    st.session_state[state_var_name] = yaml_data.get(state_var_name)
+                st.session_state[state_var_name] = yaml_data.get(state_var_name)
+                # st.write(state_var_name, yaml_data.get(state_var_name))
+                # st.write(state_var_name)
             
+            # reset selected_round and selected_round_counter
+            if yaml_data.get('rounds'):
+                st.session_state.selected_round = st.session_state.rounds[0]
+                st.session_state.selected_round_counter = 0
+
+            if yaml_data.get('api_keys'):
+                api_keys = yaml_data.get('api_keys')
+                for provider_name, api_key in api_keys.items():
+                    st.session_state[f'{provider_name}_api_key'] = api_key
+
             st.success(f"Successfully loaded configuration from '{uploaded_file.name}'!")
         
         except Exception as e:
@@ -133,40 +149,92 @@ def process_uploaded_yaml():
 
 def show_experiment_configs_selectors():
     with st.expander('Experiment Configs'):
-        st.session_state.k = st.number_input(
-            "Number of Iterations", value=st.session_state.k, placeholder="Type a number..."
+        k = st.session_state.get('k', 1)
+        # st.write(k)
+        st.number_input(
+            "Number of Iterations", value=k, placeholder="Type a number...",
+            key = 'k'
         )
-        st.session_state.test = st.toggle('Run Mock Experiments', value=st.session_state.test)
-        st.session_state.sleep_amount = st.number_input('Amount to pause between LLM API calls (seconds)', value=st.session_state.sleep_amount, )
-        models_to_test = st.session_state.models_to_test
+
+        test = st.session_state.get('test', True)
+        st.toggle('Run Mock Experiments', value=test, key='test')
+        
+        sleep_amount = st.session_state.get('sleep_amount', 0.1)
+        st.number_input(
+            'Amount to pause between LLM API calls (seconds)', 
+            value=sleep_amount,
+            key = 'sleep_amount'
+        )
+
+        models_to_test = st.session_state.get('models_to_test', [])
         filtered_models_to_test = [m for m in models_to_test if m in ALL_MODELS]
         if not filtered_models_to_test:
             filtered_models_to_test = ALL_MODELS[0]
-        st.session_state.models_to_test = st.multiselect('LLMs to Test', ALL_MODELS, default=filtered_models_to_test)
+        st.multiselect(
+            'LLMs to Test', 
+            ALL_MODELS, 
+            default=filtered_models_to_test,
+            key='models_to_test'
+        )
+
         # Based on st.session_state.models_to_test
         # get required api keys
+        if st.session_state.get('api_keys'):
+            api_keys = st.session_state.get('api_keys')
+        else:
+            api_keys = dict()
+
         if not st.session_state.test:
             selected_providers = set([m.split('-')[0] for m in st.session_state.models_to_test])
             for provider_name in selected_providers:
-                # st.write(provider_name.capitalize())
-                api_key = st.text_input(f'{provider_name.capitalize()} API key', type="password", key=f'{provider_name}_api_key_input')
-                st.session_state['api_keys'][provider_name] = api_key
-                
-                # st.write(st.session_state['api_keys'])
-        # 
-        st.session_state.paper_url = st.text_input("Paper URL (optional)", value=st.session_state.paper_url)
+                the_key = api_keys.get(provider_name, '')
 
-        st.session_state.randomize = st.checkbox('Randomize Items Displayed in Ranking/Choice Segments', st.session_state.randomize)
+                st.text_input(
+                    f'{provider_name.capitalize()} API key',
+                    value=the_key,
+                    type="password", 
+                    key=f'{provider_name}_api_key'
+                )
+
+                the_widget_key = st.session_state.get(f'{provider_name}_api_key')
+                st.session_state['api_keys'][provider_name] = the_widget_key
+                        
+        # 
+
+        paper_url = st.session_state.get('paper_url', '')
+        st.text_input(
+            "Paper URL (optional)", 
+            value=paper_url,
+            key='paper_url'
+        )
+
+        randomize = st.session_state.get('randomize', True)
+        st.checkbox(
+            'Randomize Items Displayed in Ranking/Choice Segments', 
+            randomize,
+            key='randomize'
+        )
 
 
 def reset_config():
-    # config_path = config_paths[st.session_state.page]
-    config = load_experiment_config(st.session_state.selected_config_path)
+    if st.session_state.get('yaml_data'):
+        config = st.session_state.get('yaml_data')
+    else:
+        config = load_experiment_config(st.session_state.selected_config_path)
     
     # Reset all relevant state variables from the new config
     for factor_to_load in config.keys():
         st.session_state[factor_to_load] = config.get(factor_to_load)
     # st.write(config['k'])
+    # reset selected_round and selected_round_counter
+    st.session_state.selected_round = st.session_state.rounds[0]
+    st.session_state.selected_round_counter = 0
+
+    if config.get('api_keys'):
+        api_keys = config.get('api_keys')
+        for provider_name, api_key in api_keys.items():
+            st.session_state[f'{provider_name}_api_key'] = api_key
+
     st.rerun()
     
 def show_segments(Segment_Types):
@@ -406,11 +474,11 @@ def show_add_new_segment_to_round(Segment_Types, r):
 
 
 def get_config_to_save():
-    factors_to_load = factors_to_load_dict['mixed']
+    factors_to_save = factors_to_save_dict['mixed']
     # config = load_experiment_config(st.session_state.selected_config_path)
     config_to_save = dict()
-    for factor_to_load in factors_to_load:
-        config_to_save[factor_to_load] = st.session_state.get(factor_to_load)
+    for factor_to_save in factors_to_save:
+        config_to_save[factor_to_save] = st.session_state.get(factor_to_save)
     return config_to_save
 
 def show_sample_rank(current_round, round_counter):
@@ -606,6 +674,164 @@ def stop_run_callback():
     st.session_state.stop_requested = True
     # st.toast("Experiment interruption requested. Waiting for current iteration to finish.")
  
+def process_uploaded_results_csv():
+    # Get the uploaded file from session state using the key.
+    uploaded_file = st.session_state.csv_results_uploader
+    
+    if uploaded_file is not None:
+        try:
+            # To read the file as a string
+            stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+            # string_data = stringio.read()
+            csv_df = pd.read_csv(stringio)
+            csv_dict = csv_df.to_dict(orient='records')
+            # st.write('csv_dict', csv_dict)
+            st.session_state.results = csv_dict
+            # return csv_data
+            # store the config in state for reset_config
+            # st.session_state['csv_dict'] = csv_dict
+
+            st.success(f"Successfully loaded configuration from '{uploaded_file.name}'!")
+        
+        except Exception as e:
+            st.error(f"Error processing CSV file: {e}")
+
+def parse_round_info(df_columns):
+    """
+    Parses DataFrame columns to identify rounds, their types, factors, and response columns.
+    
+    Args:
+        df_columns (list): A list of column names from the results DataFrame.
+
+    Returns:
+        dict: A dictionary where keys are round numbers and values are dicts
+              containing 'type', 'factor_col', and 'response_col'.
+              e.g., {0: {'type': 'scales', 'factor_col': '...', 'response_col': '...'}}
+    """
+    rounds_info = defaultdict(dict)
+    # Regex to capture: 1: round number, 2: type, 3: rest of the name
+    pattern = re.compile(r"round(\d+)_(\w+)_(\w+.*)")
+
+    for col in df_columns:
+        match = pattern.match(col)
+        if match:
+            round_num, round_type, name_part = match.groups()
+            
+            if 'raw' in round_type:
+                continue
+
+            round_num = int(round_num)
+            
+            rounds_info[round_num]['type'] = round_type
+            
+            if 'factor' in col:
+                rounds_info[round_num]['factor_col'] = col
+            elif 'response' in col:
+                rounds_info[round_num]['response_col'] = col
+                
+    return dict(rounds_info)
+
+def analyze_scales(df, model_col, factor_col, response_col):
+    """Analyzes Likert scale data by calculating mean and std dev."""
+    st.markdown(f"Grouping by `{model_col}` and `{factor_col}`. Aggregating `{response_col}`.")
+    
+    analysis_df = df.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
+    analysis_df = analysis_df.round(2)
+
+    st.dataframe(analysis_df)
+
+    fig = px.bar(
+        analysis_df,
+        x=factor_col,
+        y='mean',
+        color=model_col,
+        barmode='group',
+        error_y='std',
+        title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
+        labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+def analyze_choice(df, model_col, factor_col, response_col):
+    """Analyzes categorical choice data by counting occurrences."""
+    st.markdown(f"Counting `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
+
+    analysis_df = df.groupby([model_col, factor_col, response_col]).size().reset_index(name='count')
+    
+    st.dataframe(analysis_df)
+
+    fig = px.bar(
+        analysis_df,
+        x=factor_col,
+        y='count',
+        color=response_col,
+        facet_col=model_col, # Creates separate charts for each model
+        title=f"Choice Counts by {factor_col.split('_')[-1].title()} per Model",
+        labels={'count': 'Count', factor_col: factor_col.split('_')[-1].title()}
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+def analyze_ranking(df, model_col, factor_col, response_col):
+    """Analyzes ranking data by calculating mean rank."""
+    st.markdown(f"Analyzing mean rank of `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
+    
+    # This analysis is identical to 'scales', so we can reuse the function
+    analyze_scales(df, model_col, factor_col, response_col)
+
+def run_analysis(df):
+    st.write('# Analysis')
+    
+    rounds_info = parse_round_info(df.columns)
+    if not rounds_info:
+        st.error("Could not find any columns matching the 'round<N>_<type>_<name>' pattern.")
+        return
+
+    # Sort rounds by number to ensure chronological order
+    for round_num in sorted(rounds_info.keys()):
+        info = rounds_info[round_num]
+        round_type = info.get('type', 'unknown')
+        round_type_clean = 'scales' if 'scales' in round_type.lower() else 'ranking' if 'ranking' in round_type.lower() else 'choice' if 'choice' in round_type.lower() else None
+        factor_col = info.get('factor_col')
+        response_col = info.get('response_col')
+        with st.expander(f"### Round {round_num}: {round_type_clean.capitalize()}", expanded=True):
+            if not factor_col or not response_col:
+                st.warning(f"Skipping Round {round_num}. Missing factor or response column in data.")
+                continue
+
+            # Filter out rows where the necessary columns for this round are NaN
+            # This is important because not all rows have data for all rounds
+            round_df = df[['model_name', factor_col, response_col]].dropna()
+            # st.dataframe(round_df)
+            if round_df.empty:
+                st.info(f"No data available for Round {round_num}.")
+                continue
+
+            # Dispatch to the correct analysis function based on type
+            if round_type_clean == 'scales':
+                analyze_scales(round_df, 'model_name', factor_col, response_col)
+            # elif round_type_clean == 'choice':
+            #     analyze_choice(round_df, 'model_name', factor_col, response_col)
+            # elif round_type_clean == 'ranking':
+            #     analyze_ranking(round_df, 'model_name', factor_col, response_col)
+                
+def show_results(df, selected_config_path):
+    st.success(f"Experiment Run Complete.")
+
+    st.write('---')
+    st.write('# Results')
+ 
+    st.dataframe(df, use_container_width=True)
+    fn = Path(selected_config_path)
+    fn = f'{fn.stem}.csv'
+    st.download_button(
+        "Download results",
+        df.to_csv(index=False),
+        fn,
+        "text/csv",
+        key='download-csv',
+        width='stretch',
+    )
+
 def show_mixed_experiment_execution(selected_config_path):
     # The 'Start' button is only active when not running.
     if not st.session_state.is_running: 
@@ -654,26 +880,21 @@ def show_mixed_experiment_execution(selected_config_path):
         st.rerun()
 
 
-
+    with st.expander('Load Results'):
+        st.file_uploader(
+            "Upload a csv file for an experiment you already ran",
+            type=['csv'],
+            key="csv_results_uploader",  # A unique key is required for on_change
+            on_change=process_uploaded_results_csv # The callback function
+        )
 
     if st.session_state.get('results'):
-        st.success(f"Experiment Run Complete.")
-
-        st.write('---')
-        st.write('# Results')
         df = pd.DataFrame(st.session_state['results'])
-        df.to_csv('./results.csv')
-        st.dataframe(df, use_container_width=True)
-        fn = Path(selected_config_path)
-        fn = f'{fn.stem}.csv'
-        st.download_button(
-            "Download results",
-            df.to_csv(index=False),
-            fn,
-            "text/csv",
-            key='download-csv',
-            width='stretch',
-        )
+        
+        show_results(df, selected_config_path)
+
+        run_analysis(df)
+    
 
 def show_factor_items_ranking(current_round, round_counter):
     # st.write(current_round)
@@ -872,6 +1093,8 @@ def show_round_details(current_round, round_counter):
     '''
     '''
     # with st.expander(f'Round {round_counter+1} - {current_round["round_type"].capitalize()}'):
+    if not current_round: return
+
     st.write(f'Round Details: Round {round_counter+1} - {current_round["round_type"].capitalize()}')
     round_type = current_round['round_type']
     round_metadata = Round_Types[round_type]
@@ -1138,7 +1361,9 @@ def show_experiment_combinations():
     models_to_test = st.session_state.models_to_test
     total_models_to_test = len(models_to_test)
 
-    rounds = st.session_state.rounds
+    rounds = st.session_state.get('rounds')
+    
+    if not rounds: return
 
     rounds_factor_combinations = []
     for current_round in rounds:
@@ -1182,6 +1407,77 @@ def show_toast():
         st.toast(st.session_state.get('toast_text'))
         st.session_state.show_toast = False
 
+def show_round_container():
+    st.write('## User Message Rounds')
+    if not st.session_state.get('selected_round'):
+        if not st.session_state.get('rounds'):
+            st.session_state['selected_round'] = None
+            st.session_state['selected_round_counter'] = None
+        else:
+            st.session_state['selected_round'] = st.session_state.rounds[0]
+            st.session_state['selected_round_counter'] = 0
+
+    with st.container(border=True):
+        if not st.session_state.get('rounds'):
+            st.info(f'**No Rounds:** Create at least one round of conversation for the LLM.')
+            if st.button(":material/add:", use_container_width=True, type="secondary", key='add_round_modal_button_empty_round'):
+                show_add_round_modal()
+
+        else:
+            col_master, col_details = st.columns(
+                [1,2], 
+                gap='large',
+                vertical_alignment='top',
+            )
+            with col_master:
+                row = st.columns([4, 1]) # Create a small column for the delete button
+                for round_counter, current_round in enumerate(st.session_state.rounds):
+                    with row[0]: # round buttons
+                        # Check if this is the selected round
+                        is_selected = (current_round['key'] == st.session_state.selected_round['key'])
+                        
+                        # Set the button type accordingly
+                        button_type = "primary" if is_selected else "secondary"
+
+                        if st.button(
+                            f'Round {round_counter+1} - {current_round["round_type"].capitalize()}',
+                            key=f"round_btn_{current_round['key']}", # Always use a unique key for widgets in a loop
+                            type=button_type,
+                            use_container_width=True # 'width' is deprecated, use 'use_container_width'
+                        ):
+                            st.session_state.selected_round = current_round
+                            # Rerun to ensure the button style updates immediately
+                            st.rerun() 
+                        
+                        if is_selected:
+                            st.session_state['selected_round_counter'] = round_counter
+
+
+                    with row[1]: # remove round
+                        if st.button("✕", key=f"del_{current_round['key']}", help="Delete this round"):
+                            removed_round = st.session_state.rounds.pop(round_counter)
+
+                            if not st.session_state.rounds:
+                                # Handle case where all rounds are deleted
+                                st.session_state['selected_round'] = None
+                                st.session_state['selected_round_counter'] = None
+                                pass 
+                            else:
+                                st.session_state.selected_round = st.session_state.rounds[0]
+
+                            st.session_state.show_toast = True
+                            st.session_state.toast_text = f'Round {round_counter+1} - {current_round["round_type"].capitalize()} deleted'
+
+                            st.rerun()
+                                
+                # with row[0]:
+                if st.button(":material/add:", use_container_width=True, type="secondary", key='add_round_modal_button'):
+                    show_add_round_modal()
+
+            with col_details:
+                show_round_details(st.session_state.get('selected_round'), st.session_state.get('selected_round_counter', 0))
+
+
 def render_mixed_experiment(selected_config_path):
     show_toast()
     st.markdown("# Run a Behavioral Experiment on an LLM")
@@ -1197,79 +1493,27 @@ def render_mixed_experiment(selected_config_path):
         reset_config()
 
     with st.expander('System Prompt'):
-        st.session_state.system_prompt = st.text_area(
+        system_prompt = st.session_state.get('system_prompt', '')
+        st.text_area(
             label='System Prompt', 
-            value=st.session_state.system_prompt, 
+            value=system_prompt, 
             placeholder='''Type in your System Prompt''',
-            key=f'mixed_system_prompt' 
+            key=f'system_prompt' 
         )
 
     show_experiment_configs_selectors()
 
-    st.write('## User Message Rounds')
-    if not st.session_state.get('selected_round'):
-        st.session_state['selected_round'] = st.session_state.rounds[0]
-    # st.write('selected round:', st.session_state['selected_round'])
 
-    with st.container(border=True):
-        col_master, col_details = st.columns(
-            [1,2], 
-            gap='large',
-            vertical_alignment='top',
-        )
-        with col_master:
-            row = st.columns([4, 1]) # Create a small column for the delete button
+    show_round_container()
 
-            for round_counter, current_round in enumerate(st.session_state.rounds):
-            
-                with row[0]: # round buttons
-                    # Check if this is the selected round
-                    is_selected = (current_round['key'] == st.session_state.selected_round['key'])
-                    
-                    # Set the button type accordingly
-                    button_type = "primary" if is_selected else "secondary"
-
-                    if st.button(
-                        f'Round {round_counter+1} - {current_round["round_type"].capitalize()}',
-                        key=f"round_btn_{current_round['key']}", # Always use a unique key for widgets in a loop
-                        type=button_type,
-                        use_container_width=True # 'width' is deprecated, use 'use_container_width'
-                    ):
-                        st.session_state.selected_round = current_round
-                        # Rerun to ensure the button style updates immediately
-                        st.rerun() 
-                    
-                    if is_selected:
-                        selected_round_counter = round_counter
-
-
-                with row[1]: # remove round
-                    if st.button("✕", key=f"del_{current_round['key']}", help="Delete this round"):
-                        removed_round = st.session_state.rounds.pop(round_counter)
-
-                        if not st.session_state.rounds:
-                            # Handle case where all rounds are deleted
-                            pass 
-                        else:
-                            st.session_state.selected_round = st.session_state.rounds[0]
-
-                        st.session_state.show_toast = True
-                        st.session_state.toast_text = f'Round {round_counter+1} - {current_round["round_type"].capitalize()} deleted'
-
-                        st.rerun()
-                        
-            with row[0]:
-                if st.button("Add New Round", use_container_width=True, type="secondary", key='add_round_modal_button'):
-                    show_add_round_modal()
-
-        with col_details:
-            show_round_details(st.session_state['selected_round'], selected_round_counter)
 
     config_to_save = get_config_to_save()
     # st.write(config_to_save)
-    show_download_save_config(config_to_save, selected_config_path)
 
     show_experiment_combinations()
+
+    show_download_save_config(config_to_save, selected_config_path)
+
 
     show_mixed_experiment_execution(selected_config_path)
 
@@ -1284,10 +1528,9 @@ def main():
         
     # On first render, Reset all relevant state variables from the new config
     for factor_to_load in config.keys():
-        if not st.session_state.get(factor_to_load):
+        if st.session_state.get(factor_to_load) is None:
+            # st.write(factor_to_load)
             st.session_state[factor_to_load] = config.get(factor_to_load)
-    
-    # st.write('is_prod', is_prod)
 
     # Render the page
     render_mixed_experiment(selected_config_path=config_paths['mixed'])

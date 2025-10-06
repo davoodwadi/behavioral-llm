@@ -1,13 +1,9 @@
-,trial_id,timestamp,model_name,iteration,round0_ranking_display_order,round0_ranking_llm_response,round0_ranking_llm_raw_response,round0_llm_rank
-0,b6b62b5f-53ef-4a7a-b5a4-26e15cd2b48a,2025-10-03T17:40:36.904351,test,0,"['us', 'canada', 'china']","[3, 2, 1]","[3, 2, 1]","['china', 'canada', 'us']"
-1,8fe423ed-7918-4940-ac20-4492e9210f58,2025-10-03T17:40:37.017837,test,1,"['us', 'canada', 'china']","[1, 2, 3]","[1, 2, 3]","['us', 'canada', 'china']"
-2,a3d1786a-f897-4460-afdc-5a6ae6d893eb,2025-10-03T17:40:37.131119,test,0,"['us', 'china', 'canada']","[1, 2, 3]","[1, 2, 3]","['us', 'china', 'canada']"
-3,11de6e30-c206-4d2b-9d13-d22c0438db49,2025-10-03T17:40:37.238247,test,1,"['us', 'china', 'canada']","[1, 3, 2]","[1, 3, 2]","['us', 'canada', 'china']"
-4,65749ca2-abbd-49cc-a0ab-3114ed42a992,2025-10-03T17:40:37.349116,test,0,"['canada', 'us', 'china']","[3, 2, 1]","[3, 2, 1]","['china', 'us', 'canada']"
-5,a3d683fc-e82f-4490-9e45-fa959c83c607,2025-10-03T17:40:37.459199,test,1,"['canada', 'us', 'china']","[3, 1, 2]","[3, 1, 2]","['china', 'canada', 'us']"
-6,16aa8fdb-0507-4cbe-be21-0a5cebd82e78,2025-10-03T17:40:37.574958,test,0,"['canada', 'china', 'us']","[1, 3, 2]","[1, 3, 2]","['canada', 'us', 'china']"
-7,87a038d5-37f7-47b9-88c3-8bb8359c0afc,2025-10-03T17:40:37.679173,test,1,"['canada', 'china', 'us']","[2, 3, 1]","[2, 3, 1]","['china', 'us', 'canada']"
-8,3ec6fcd5-1eb6-4c1b-9f5b-c27aeb114c32,2025-10-03T17:40:37.789684,test,0,"['china', 'us', 'canada']","[3, 2, 1]","[3, 2, 1]","['canada', 'us', 'china']"
-9,65da0584-47c3-49fd-912d-831ec1a24340,2025-10-03T17:40:37.899764,test,1,"['china', 'us', 'canada']","[1, 3, 2]","[1, 3, 2]","['china', 'canada', 'us']"
-10,fc47b476-6e2f-41c2-b319-d142307b8f8b,2025-10-03T17:40:38.010135,test,0,"['china', 'canada', 'us']","[1, 2, 3]","[1, 2, 3]","['china', 'canada', 'us']"
-11,1795baf8-798f-4189-9089-1283195048c1,2025-10-03T17:40:38.125309,test,1,"['china', 'canada', 'us']","[3, 1, 2]","[3, 1, 2]","['us', 'china', 'canada']"
+,trial_id,timestamp,model_name,iteration,round0_factor_nationality,round0_scales_llm_response,round0_scales_llm_raw_response
+0,0fc31c5a-2190-40c9-b4d4-203df4268924,2025-10-06T12:37:38.430159,gpt-4.1-nano,0,american,4,4
+1,7220ca24-65c6-4a2d-be7c-9446588122a8,2025-10-06T12:37:38.935202,gpt-4.1-nano,1,american,1,1
+2,c7adc07e-4495-4709-9206-78857cccb6b1,2025-10-06T12:37:39.441229,gpt-4.1-nano,0,chinese,2,2
+3,288f98aa-b0fb-41ea-95be-c61859cd51be,2025-10-06T12:37:39.951464,gpt-4.1-nano,1,chinese,3,3
+4,4a3d7996-9fc0-4425-b26c-61c84660d3d4,2025-10-06T12:37:40.461267,deepseek-ai/DeepSeek-V3.1-Terminus,0,american,5,5
+5,dea69884-d784-497d-b8a8-aba7e2aa4521,2025-10-06T12:37:40.971671,deepseek-ai/DeepSeek-V3.1-Terminus,1,american,7,7
+6,233f27f4-4bc4-4242-968b-e4b6469c74fe,2025-10-06T12:37:41.481591,deepseek-ai/DeepSeek-V3.1-Terminus,0,chinese,5,5
+7,c75dce87-7d67-4bb2-ae1d-3edc427b05e0,2025-10-06T12:37:41.991689,deepseek-ai/DeepSeek-V3.1-Terminus,1,chinese,6,6
