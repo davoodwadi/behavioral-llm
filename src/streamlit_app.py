@@ -573,23 +573,34 @@ def show_sample_mixed(current_round, round_counter):
         show_sample_scales(current_round, round_counter)
 
 def show_download_save_config(config_to_save, selected_config_path):
-    col_download, col_save = st.columns(2)
-    with col_download:
-        st.download_button(
-        "Download Config",
-        yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
-        f"{selected_config_path}",
-        "text/yaml",
-        key='download-yaml',
-        width='stretch'
-        )
     if not is_prod:
+        col_download, col_save = st.columns(2)
+        with col_download:
+            st.download_button(
+            "Download Config",
+            yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
+            f"{selected_config_path}",
+            "text/yaml",
+            key='download-yaml',
+            width='stretch'
+            )
+        
         with col_save:
             if st.button("Save config", type="secondary", width='stretch'):
                 st.write(selected_config_path)
                 with open(selected_config_path,'w') as f:
                     yaml.dump(config_to_save, f, sort_keys=False, Dumper=NoAliasDumper)
+    else:
+        st.download_button(
+            "Download Config",
+            yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
+            f"{selected_config_path}",
+            "text/yaml",
+            key='download-yaml',
+            width='stretch'
+        )
         
+
 def show_experiment_execution(selected_config_path, experiment_type='mixed'):
     # ----------------- Start Button Logic -----------------
     if st.button("Start LLM Experiment Run", type="primary", use_container_width=True, disabled=st.session_state.is_running):
