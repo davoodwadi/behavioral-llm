@@ -6,6 +6,9 @@ from pathlib import Path
 import yaml
 import json
 import random
+from math import comb
+import numpy as np
+
 import uuid
 from io import StringIO
 
@@ -39,6 +42,7 @@ APP_ENVIRONMENT = os.environ.get('APP_ENV', 'dev')
 
 # is_prod = "SPACE_ID" in os.environ
 is_prod = (APP_ENVIRONMENT == 'production')
+# is_prod = True
 # Initialize session state flags
 if 'is_running' not in st.session_state:
     st.session_state.is_running = False
@@ -237,82 +241,7 @@ def reset_config():
 
     st.rerun()
     
-def show_segments(Segment_Types):
-    for i, (segment) in enumerate(st.session_state.segments):
-        col1_segments, col2_segments = st.columns([3,1])
-        with col2_segments:
-            with st.container(border=True):
-                label_index = Segment_Types.index(st.session_state.segments[i].get('segment_label'))
-                st.session_state.segments[i]['segment_label'] = st.selectbox(
-                    'Change Segment Type',Segment_Types, 
-                    index=label_index, 
-                    key=f"type_selectbox_{segment['segment_id']}"
-                )
-                if st.button('Remove Segment', key=f"segment_remove_button_{segment['segment_id']}"):
-                    st.write(f'segment removed: {segment["segment_id"]}')
-                    remove_segment(segment["segment_id"])
-        with col1_segments:
-            st.session_state.segments[i]['segment_text'] = st.text_area(
-                st.session_state.segments[i]['segment_label'], 
-                value=st.session_state.segments[i]['segment_text'], 
-                key=f"text_area_{segment['segment_id']}"
-            )
 
-def show_add_new_segment(Segment_Types):
-    with st.container(border=True):
-        col1_segments_add, col2_segments_add = st.columns([2,1], vertical_alignment='bottom')
-        
-        with col1_segments_add:
-            New_Segment_Type = st.selectbox('Segment Type',Segment_Types, index=1, key=f"type_new_segment")
-            
-        with col2_segments_add:
-            if st.button('Add Segment', width='stretch'):
-                st.session_state.segments.append({
-                'segment_label':New_Segment_Type,
-                'segment_text':'',
-                'segment_id':str(uuid.uuid1())[:5]
-                })
-                st.write('segment added')
-                st.rerun()
-
-
-def remove_factor(factor_name):
-    st.toast(f'{factor_name} removed')
-    new_list = [f for f in st.session_state.factors_list if f[0]!=factor_name]
-    st.session_state.factors_list = new_list
-
-
-def show_num_factor_items_to_rank():
-    num_items_in_ranking = len(st.session_state.factors_list[0][1])
-    st.write(f'{num_items_in_ranking} items to rank')
-
-
-def show_factors_and_levels():
-    for i, f in enumerate(st.session_state.factors_list):
-        # st.write(f)
-        factor_name = f[0] # product
-        factor_levels = f[1] # [{product|name:'Name 1', product|text:'Text 1'},{product|name:'Name 2', product|text:'Text 2'}]
-        
-        col_factor, col_remove = st.columns([2,1])
-        with col_factor:
-            st.write(factor_name)
-        with col_remove:
-            st.button('Remove', on_click=remove_factor, args=[factor_name], width='stretch',key=factor_name)
-        
-        factor_levels_display = []
-        for factor in factor_levels:
-            new_dict = {k.split('|')[1]:v for k, v in factor.items()}
-            factor_levels_display.append(new_dict)
-        df = pd.DataFrame(factor_levels_display)
-        # st.dataframe(df)
-        edited_df = st.data_editor(df)
-        edited_dict = edited_df.to_dict(orient='records')
-        # st.write(edited_dict)
-
-        edited_formatted_list = [factor_name, [{f"{factor_name}|name":level['name'], f"{factor_name}|text":level['text']} for level in edited_dict]]
-        # st.write(edited_formatted_list)
-        index = [j for j, fac in enumerate(st.session_state.factors_list) if fac[0]==factor_name][0]
-        st.session_state.factors_list[index] = edited_formatted_list
 
 def show_add_block_variable():
     with st.expander('Add Block Variable'):
@@ -371,27 +300,6 @@ def show_block_variable():
     else:
         show_add_block_variable()
 
-def show_add_factor():
-    with st.expander('Add factor'):
-        df = pd.DataFrame({
-            'Level Name': ["Name 1", "Name 2", "Name 3"],
-            'Level Text for LLM': ["Text 1", "Text 2", "Text 3"]
-        })
-        new_factor_name = st.text_input('New Factor ID', key='new_factor_name_text_input')
-        edited_df = st.data_editor(
-        df, 
-        num_rows="dynamic", # Allows users to add/delete rows
-        width=600
-        )
-        new_factor_names_levels = edited_df['Level Name'].values.tolist()
-        new_factor_text_levels = edited_df['Level Text for LLM'].values.tolist()
-        new_fact = [new_factor_name, [{f'{new_factor_name}|name':nf_name, f'{new_factor_name}|text':nf_text} for nf_name, nf_text in zip(new_factor_names_levels, new_factor_text_levels)]]
-        # st.write(new_fact)
-        if st.button("Add factor"):
-            # print(new_fact)
-            st.session_state.factors_list.append(new_fact)
-            st.rerun()
-            st.write('factor added')
 
 def remove_segment(segment_id):
     st.session_state.segments = [seg for seg in st.session_state.segments if seg['segment_id']!=segment_id]
@@ -422,7 +330,7 @@ def show_mixed_segments(Segment_Types, current_round, round_counter):
                         key=f"type_selectbox_{segment['segment_id']}"
                     )
                     if st.button('Remove Segment', key=f"segment_remove_button_{segment['segment_id']}"):
-                        st.write(f'segment removed: {segment["segment_id"]}')
+                        # st.write(f'segment removed: {segment["segment_id"]}')
                         remove_segment_from_round(segment["segment_id"])
             with col1_segments:
                 if ('Choice' in segment['segment_label']) or ('Ranking' in segment['segment_label']) or ('Treatment' in segment['segment_label']):
@@ -455,22 +363,23 @@ def show_mixed_segments(Segment_Types, current_round, round_counter):
                         key=f"{segment['segment_id']}"
                     )
 
-def show_add_new_segment_to_round(Segment_Types, r):
-    with st.container(border=True):
-        col1_segments_add, col2_segments_add = st.columns([2,1], vertical_alignment='bottom')
+
+@st.dialog('Add Segment to Round')
+def show_add_new_segment_to_round_dialog(Segment_Types, r):
+
+    col1_segments_add, col2_segments_add = st.columns([2,1], vertical_alignment='bottom')
+    
+    with col1_segments_add:
+        New_Segment_Type = st.selectbox('New Segment Type', Segment_Types, index=1, key=f"type_new_segment_{r['key']}")
         
-        with col1_segments_add:
-            New_Segment_Type = st.selectbox('New Segment Type', Segment_Types, index=1, key=f"type_new_segment_{r['key']}")
-            
-        with col2_segments_add:
-            if st.button('Add Segment', width='stretch', key=f"add_new_segment_button_{r['key']}"):
-                r['segments'].append({
-                'segment_label':New_Segment_Type,
-                'segment_text':'',
-                'segment_id':str(uuid.uuid1())[:5]
-                })
-                st.write('segment added')
-                st.rerun()
+    with col2_segments_add:
+        if st.button('Add Segment', width='stretch', key=f"add_new_segment_button_{r['key']}"):
+            r['segments'].append({
+            'segment_label':New_Segment_Type,
+            'segment_text':'',
+            'segment_id':str(uuid.uuid1())[:5]
+            })
+            st.rerun()
 
 
 def get_config_to_save():
@@ -503,7 +412,7 @@ def show_sample_rank(current_round, round_counter):
     
     factor_levels_rank_permutation = random.choice(factor_levels_rank_permutations)
     # st.write(factor_levels_rank_permutation)
-    if st.button('Refresh Sample', key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
+    if st.button('Refresh Sample', width='stretch' ,key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
         if st.session_state.randomize:
             random.shuffle(factor_levels_rank_permutation)
             if st.session_state.get('block_variable'):
@@ -532,11 +441,11 @@ def show_sample_choice(current_round, round_counter):
     if st.session_state.randomize:
         random.shuffle(sample)
 
-    if st.button('Refresh Sample', key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
+    if st.button('Refresh Sample', width='stretch' , key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
         sample = random.choice(combinations)
         if st.session_state.randomize:
             random.shuffle(sample)
-
+ 
     formatted_text, choices_display_order = get_llm_text_mixed_choice(sample, current_round) 
     st.write('### Display Order')
     for i, choice_display in enumerate(choices_display_order):
@@ -556,21 +465,22 @@ def show_sample_scales(current_round, round_counter):
     factor_products = get_choice_factor_products(factors_list)
     factor_product = random.choice(factor_products)
 
-    if st.button('Refresh Sample', key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
+    if st.button('Refresh Sample', width='stretch' , key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
         factor_product = random.choice(factor_products)
     formatted_text, factors_display = get_llm_text_mixed_scales(factor_product, current_round) 
     st.write(formatted_text)
     st.write('---')
 
 
-def show_sample_mixed(current_round, round_counter):
-    # st.write(current_round)
+@st.dialog('Sample User Message Shown to the LLM')
+def show_sample_mixed_modal(current_round, round_counter):
     if current_round['round_type']=='ranking':
         show_sample_rank(current_round, round_counter)
     elif current_round['round_type']=='choice':
         show_sample_choice(current_round, round_counter)
     elif current_round['round_type']=='scales':
         show_sample_scales(current_round, round_counter)
+
 
 def show_download_save_config(config_to_save, selected_config_path):
     if not is_prod:
@@ -600,82 +510,6 @@ def show_download_save_config(config_to_save, selected_config_path):
             width='stretch'
         )
         
-
-def show_experiment_execution(selected_config_path, experiment_type='mixed'):
-    # ----------------- Start Button Logic -----------------
-    if st.button("Start LLM Experiment Run", type="primary", use_container_width=True, disabled=st.session_state.is_running):
-        # check required API KEYS
-        correct_keys = True
-        missing_keys=[]
-        if not st.session_state.test:
-            selected_providers = set([m.split('-')[0] for m in st.session_state.models_to_test])
-            for provider_name in selected_providers:
-                api_key = st.session_state['api_keys'][provider_name]
-                if (not api_key) or (api_key=='abc'):
-                    correct_keys = False
-                    missing_keys.append(provider_name)
-        if correct_keys:
-            st.session_state.is_running = True
-            st.toast("Experiment started.")
-            st.rerun()
-        else:
-            st.error(f'You need to set your API keys for all providers to test.\n\n Missing keys for {missing_keys}')
-    # ----------------- Stop Button Logic (Only shown while running) -----------------
-    if st.session_state.is_running:
-        st.button(
-            "STOP Experiment", 
-            type="secondary", 
-            use_container_width=True,
-            on_click=stop_run_callback # Call the function to set the flag
-        )    
-    # ----------------- Execution Logic -----------------
-    if st.session_state.is_running:
-        if experiment_type=='mixed': 
-            runner = StExperimentRunnerMixed(
-                config_path=selected_config_path,
-                session_state=st.session_state 
-            )
-        elif experiment_type=='choice':
-            runner = StExperimentRunnerChoice(
-                config_path=selected_config_path,
-                session_state=st.session_state 
-            )
-        elif experiment_type=='ranking':
-            runner = StExperimentRunnerRanking(
-                config_path=selected_config_path,
-                session_state=st.session_state 
-            )
-        elif experiment_type=='scales':
-            runner = StExperimentRunnerScales(
-                config_path=selected_config_path,
-                session_state=st.session_state 
-            )
-        st.session_state.runner = runner
-        
-        error = runner.run()
-        if error:
-            st.error(f"Error in calling the LLM:\n\n{error}")
-        else:
-            # After run() completes or is interrupted, set the flag back to False
-            st.session_state.is_running = False
-        st.rerun() # Rerun to remove the spinner and stop button
-
-    # ----------------- Success Logic -----------------
-    if st.session_state.get('runner'):
-        st.success(f"Experiment Run Complete.")
-
-        results_df, fn = st.session_state.runner.get_results_df()
-        if fn:
-            st.subheader("Preliminary Results")
-            st.dataframe(results_df)
-            st.download_button(
-                "Download results",
-                results_df.to_csv(index=False),
-                fn,
-                "text/csv",
-                key='download-csv',
-                width='stretch',
-            )
 
 def start_run_callback():
     st.session_state.is_running = True
@@ -906,67 +740,119 @@ def show_mixed_experiment_execution(selected_config_path):
 
         run_analysis(df)
     
-
-def show_factor_items_ranking(current_round, round_counter):
-    # st.write(current_round)
-    if not current_round.get('factors_list'):
-        num_items_in_ranking = 0
-        st.info(f'No factors to rank. Add one factor.')
-        show_add_factor_mixed(current_round, round_counter)
-
-    else:
-        num_items_in_ranking = len(current_round['factors_list'][0][1])
-        st.write(f'{num_items_in_ranking} items to rank')
-        show_factors_and_levels_mixed(current_round, round_counter)
-
-
 def remove_factor_from_state(factor_name, current_round):
     new_list = [f for f in current_round['factors_list'] if f[0]!=factor_name]
     st.toast(f'{factor_name} removed')
     current_round['factors_list'] = new_list
 
+@st.dialog("Add Factor")
+def show_add_factor_dialog(current_round, round_counter):
+    df = pd.DataFrame({
+        'Level Name': ["Name 1", "Name 2", "Name 3"],
+        'Level Text for LLM': ["Text 1", "Text 2", "Text 3"]
+    })
+    new_factor_name = st.text_input('New Factor Name', key=f'new_factor_name_text_input_{current_round["round_type"]}_{round_counter}')
+    edited_df = st.data_editor(
+    df, 
+    num_rows="dynamic",
+    key=f'data_editor_{current_round["round_type"]}_{round_counter}'
+    )
+    new_factor_names_levels = edited_df['Level Name'].values.tolist()
+    new_factor_text_levels = edited_df['Level Text for LLM'].values.tolist()
+    new_fact = [new_factor_name, [{f'{new_factor_name}|name':nf_name, f'{new_factor_name}|text':nf_text} for nf_name, nf_text in zip(new_factor_names_levels, new_factor_text_levels)]]
+    if st.button("Add factor", key=f'add_button_{current_round["round_type"]}_{round_counter}'):
+        current_round['factors_list'].append(new_fact)
 
-def show_add_factor_mixed(current_round, round_counter):
-    with st.expander(f'Add {current_round["round_type"]} factor'):
-        df = pd.DataFrame({
-            'Level Name': ["Name 1", "Name 2", "Name 3"],
-            'Level Text for LLM': ["Text 1", "Text 2", "Text 3"]
-        })
-        new_factor_name = st.text_input('New Factor Name', key=f'new_factor_name_text_input_{current_round["round_type"]}_{round_counter}')
-        edited_df = st.data_editor(
-        df, 
-        num_rows="dynamic",
-        key=f'data_editor_{current_round["round_type"]}_{round_counter}'
-        )
-        new_factor_names_levels = edited_df['Level Name'].values.tolist()
-        new_factor_text_levels = edited_df['Level Text for LLM'].values.tolist()
-        new_fact = [new_factor_name, [{f'{new_factor_name}|name':nf_name, f'{new_factor_name}|text':nf_text} for nf_name, nf_text in zip(new_factor_names_levels, new_factor_text_levels)]]
-        if st.button("Add factor", key=f'add_button_{current_round["round_type"]}_{round_counter}'):
-            current_round['factors_list'].append(new_fact)
-            st.rerun()
-            st.toast(f'Factor Added: {new_factor_name}')
+        st.session_state.show_toast = True
+        st.session_state.toast_text = f'Factor Added: {new_factor_name}'
 
-def show_factor_combinations():
-    factor_levels = [fl[1] for fl in st.session_state.factors_list]
-    factorial_text_display = " x ".join([str(len(fl)) for fl in factor_levels])
+        st.rerun()        
 
-    factor_products = [list(p) for p in itertools.product(*factor_levels)]
-    st.session_state['factor_products'] = factor_products
-    st.write(f'{len(factor_products)} Combinations: {factorial_text_display}')
+
 
 def show_factor_combinations_mixed(current_round, round_counter):
-    factor_levels = [fl[1] for fl in current_round['factors_list']]
-    factorial_text_display = " x ".join([str(len(fl)) for fl in factor_levels])
+    with st.container(border=True):
+        # --- Calculate all values first ---
+        factor_levels = [fl[1] for fl in current_round['factors_list']]
+        factor_names = [fl[0] for fl in current_round['factors_list']]
+        factorial_text_display = " x ".join([str(len(fl)) for fl in factor_levels])
+        
 
-    factor_products = [list(p) for p in itertools.product(*factor_levels)]
-    current_round[f'factor_products'] = factor_products
-    st.write(f'{len(factor_products)} Combinations. {factorial_text_display} Full Factorial.')
+        # st.write(factor_levels)
+        # --- Display the information ---
+        st.markdown(f"**Design:** `{factorial_text_display}` Full Factorial Design")
+        l = []
+        for factor_name, factor_level in current_round['factors_list']:
+            # st.write(factor_name)
+            # st.write(factor_level)
+            details = ', '.join([f[f'{factor_name}|name'] for f in factor_level])
+            l.append(f'{factor_name} ({details})')
+        factorial_text_display_details = ' x '.join(l)
+        st.caption(f"{factorial_text_display_details}")
+        
+
+
+def apply_editor_changes_and_update_state(factor_name, current_round, editor_key, original_df):
+    """
+    Callback to apply the delta from st.data_editor to the original DataFrame
+    and then update the main application state.
+    This function is robust against empty/NaN rows.
+    """
+    # 1. Get the delta object from session_state. This is the source of truth for changes.
+    try:
+        delta = st.session_state[editor_key]
+    except KeyError:
+        # This can happen in rare edge cases, so we exit gracefully.
+        return
+
+    # Start with a clean copy of the data that was originally passed to the editor
+    final_df = original_df.copy()
+
+    # 2. Apply DELETED rows first
+    # delta["deleted_rows"] is a list of original integer indices to delete
+    if delta["deleted_rows"]:
+        # The `errors='ignore'` flag prevents crashes if an index is already gone
+        final_df = final_df.drop(index=delta["deleted_rows"], errors='ignore')
+
+    # 3. Apply ADDED rows
+    # delta["added_rows"] is a list of new row dictionaries
+    if delta["added_rows"]:
+        added_df = pd.DataFrame(delta["added_rows"])
+        final_df = pd.concat([final_df, added_df], ignore_index=True)
+        
+    # 4. Apply EDITED rows last
+    # delta["edited_rows"] is a dict like {row_index: {col_name: new_value}}
+    for row_index_str, changed_data in delta["edited_rows"].items():
+        row_index = int(row_index_str)
+        for col_name, new_value in changed_data.items():
+            # Use .at for fast, label-based single-cell assignment
+            final_df.at[row_index, col_name] = new_value
+
+    # 5. --- CRITICAL DATA CLEANING STEP ---
+    final_df.fillna('', inplace=True)
+
+    final_df.reset_index(drop=True, inplace=True)
+
+    # 6. Convert the clean, final DataFrame back into your required state format
+    final_records = final_df.to_dict(orient='records')
+    formatted_levels = [
+        {f"{factor_name}|name": level.get('name', ''), f"{factor_name}|text": level.get('text', '')}
+        for level in final_records
+    ]
+    new_factor_data = [factor_name, formatted_levels]
+
+    # 7. Find and update the factor in the main state object
+    try:
+        index = [i for i, fac in enumerate(current_round['factors_list']) if fac[0] == factor_name][0]
+        current_round['factors_list'][index] = new_factor_data
+    except IndexError:
+        st.error(f"Could not find factor '{factor_name}' to update.")
 
 def show_factors_and_levels_mixed(current_round, round_counter):
-    for i, f in enumerate(current_round['factors_list']):
-        factor_name = f[0] # product
-        factor_levels = f[1] # [{product|name:'Name 1', product|text:'Text 1'},{product|name:'Name 2', product|text:'Text 2'}]
-        
+    for factor_tuple in (current_round['factors_list']):
+        factor_name = factor_tuple[0] # product
+        factor_levels = factor_tuple[1] # [{product|name:'Name 1', product|text:'Text 1'},{product|name:'Name 2', product|text:'Text 2'}]
+        # st.write('something')
         col_factor, col_remove = st.columns([2,1])
         with col_factor:
             st.write(factor_name)
@@ -976,25 +862,37 @@ def show_factors_and_levels_mixed(current_round, round_counter):
                 st.rerun()
         
         factor_levels_display = []
-        for factor in factor_levels:
-            new_dict = {k.split('|')[1]:v for k, v in factor.items()}
-            factor_levels_display.append(new_dict)
-        df = pd.DataFrame(factor_levels_display)
-        edited_df = st.data_editor(df, num_rows='dynamic', key=f"data_editor_{current_round['round_type']}_{factor_name}")
-        edited_dict = edited_df.to_dict(orient='records')
+        for level_dict  in factor_levels:
+            clean_dict = {k.split('|')[1]: v for k, v in level_dict.items()}
+            factor_levels_display.append(clean_dict)
 
-        edited_formatted_list = [factor_name, [{f"{factor_name}|name":level['name'], f"{factor_name}|text":level['text']} for level in edited_dict]]
-        # st.write(edited_formatted_list)
-        index = [j for j, fac in enumerate(current_round['factors_list']) if fac[0]==factor_name][0]
-        current_round['factors_list'][index] = edited_formatted_list
+        original_df = pd.DataFrame(factor_levels_display)
+
+        editor_key = f"data_editor_{current_round['round_type']}_{current_round['key']}_{factor_name}"
+
+        st.data_editor(
+            original_df, 
+            num_rows='dynamic', 
+            key=editor_key,
+            on_change=apply_editor_changes_and_update_state,
+            kwargs={
+                    "factor_name": factor_name,
+                    "current_round": current_round,
+                    "editor_key": editor_key,
+                    "original_df": original_df  # Pass the original state to the callback
+                },
+            use_container_width=True,
+            column_order=("name", "text"),
+        )
+
 
 def show_factor_items_ranking(current_round, round_counter):
     # st.write(current_round)
     if not current_round.get('factors_list'):
         num_items_in_ranking = 0
         st.info(f'No factors to rank. Add one factor.')
-        show_add_factor_mixed(current_round, round_counter)
-
+        if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
+            show_add_factor_dialog(current_round, round_counter)
     else:
         num_items_in_ranking = len(current_round['factors_list'][0][1])
         st.write(f'{num_items_in_ranking} items to rank')
@@ -1030,75 +928,100 @@ def get_rank_permutations(current_round):
     factor_levels_rank_permutations_list = [list(permutation) for permutation in factor_levels_rank_permutations]
     return factor_levels_rank_permutations_list
 
-def show_choice_combinations_details(current_round, round_counter):
-    num_choices = get_num_choices(current_round)
-    factor_products = get_choice_factor_products(current_round['factors_list'])
-    st.write(f"Number of choices for the LLM in this round: {num_choices}")
-    total_combinations = len(factor_products)
-    st.write(f"Total combinations: {total_combinations}")
-    combinations = list(itertools.combinations(factor_products, num_choices))
-    combinations = [list(combo) for combo in combinations]
-    st.session_state['combinations'] = combinations
-    st.write(f"{total_combinations} choose {num_choices}: *total {len(combinations)}*")
+def show_choice_combinations_details_pro(current_round, round_counter):
+    """
+    Displays the experiment setup in a structured and professional card.
+    """
+    # st.subheader(f"Round {round_counter}: Experiment Setup")
+
+    with st.container(border=True):
+        # --- Calculate all values first ---
+        factor_levels = [fl[1] for fl in current_round['factors_list']]
+        factorial_text_display = " x ".join([str(len(fl)) for fl in factor_levels])
+        
+        factor_products = get_choice_factor_products(current_round['factors_list'])
+        total_combinations = len(factor_products)
+        
+        num_choices = get_num_choices(current_round)
+        
+        # Calculate the number of combinations (nCk)
+        # Use math.comb for efficiency and clarity if available (Python 3.8+)
+        total_sets = comb(total_combinations, num_choices)
+
+        # --- Display the information ---
+        st.markdown(f"**Design:** `{factorial_text_display}` Full Factorial Design")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                label="Total Factor Combinations", 
+                value=total_combinations,
+                help="The total number of unique choices generated by the full factorial design. This is 'n'."
+            )
+        
+        with col2:
+            st.metric(
+                label="Number of Choices Shown", 
+                value=num_choices,
+                help="The number of choices the LLM will be asked to evaluate in a single prompt. This is 'r'."
+            )
+            
+        with col3:
+            st.metric(
+                label="Possible Choice Sets", 
+                value=f"{total_sets:,}", # Adds a comma for thousands
+                help=f"The total number of unique sets of {num_choices} items that can be created from the {total_combinations} total combinations."
+            )
+
+        st.caption(f"This is calculated as 'n choose r', or C({total_combinations}, {num_choices}).")
+
 
 def show_factor_items_choice(current_round, round_counter):
+    
     if not current_round.get('factors_list'):
         st.info(f'No choice factors. Add at least one factor.')
+        
+        if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
+            show_add_factor_dialog(current_round, round_counter)
+
         current_round['factors_list'] = []
-        show_add_factor_mixed(current_round, round_counter)
 
     else:
-        show_factor_combinations_mixed(current_round, round_counter)
-        show_choice_combinations_details(current_round, round_counter)
+        show_choice_combinations_details_pro(current_round, round_counter)
+
+
+        st.write('---')
         show_factors_and_levels_mixed(current_round, round_counter)
-        show_add_factor_mixed(current_round, round_counter)
+
+        if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
+            show_add_factor_dialog(current_round, round_counter)
+        
+        st.write('---')
+
+        factor_products = get_choice_factor_products(current_round['factors_list'])
+        max_possible_choices_shown = len(factor_products)
+        choices_shown_in_round = st.slider('Number of Choices Shown (*r*)', min_value=2, max_value=max_possible_choices_shown, key=f'slider_{round_counter}_choice', help='''How many choices (r) to show to the LLM in this round. Maximum number of choices depends on n choose r (n: factor combination; r: choices shown to the LLM)''')
+
+        if current_round['choices_shown_in_round'] != choices_shown_in_round:
+            current_round['choices_shown_in_round'] = choices_shown_in_round
+            st.rerun()
+    
 
 def show_factor_items_scales(current_round, round_counter):
     if not current_round.get('factors_list'):
         st.info(f'No scales factors. Add at least one factor.')
         current_round['factors_list'] = []
-        show_add_factor_mixed(current_round, round_counter)
 
     else:
         show_factor_combinations_mixed(current_round, round_counter)
+        st.write('---')
         show_factors_and_levels_mixed(current_round, round_counter)
-        show_add_factor_mixed(current_round, round_counter)
 
-def show_round(current_round, round_counter):
-    '''
-    '''
-    with st.expander(f'Round {round_counter+1} - {current_round["round_type"].capitalize()}'):
-        round_type = current_round['round_type']
-        round_metadata = Round_Types[round_type]
-        round_segment_types = round_metadata['Segment_Types']
-
-        if round_type=='choice':
-            choices_shown_in_round = st.slider('Number of Choices Shown (*r*)', 2, key=f'slider_{round_counter}_{round_type}', help='''How many choices (r) to show to the LLM in this round. Maximum number of choices depends on n choose r (n: factor combination; r: choices shown to the LLM)''')
-            current_round['choices_shown_in_round'] = choices_shown_in_round
-        
-
-        with st.expander(f"# Factors for this Round"):
-            if current_round['round_type']=='ranking':
-                show_factor_items_ranking(current_round, round_counter)
-            elif current_round['round_type']=='choice':
-                show_factor_items_choice(current_round, round_counter)
-            elif current_round['round_type']=='scales':
-                show_factor_items_scales(current_round, round_counter)
-
-        with st.expander(f"# Segments for this Round"):
-
-            show_mixed_segments(round_segment_types, current_round, round_counter)
-            show_add_new_segment_to_round(round_segment_types, current_round)
+    if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
+        show_add_factor_dialog(current_round, round_counter)
 
 
-        with st.expander(f'# Sample Text for LLM'):
-            show_sample_mixed(current_round, round_counter)
-
-        if st.button(f'Remove Round {round_counter+1} - {current_round["round_type"].capitalize()}', key=f'remove_round_{round_counter}', width='stretch'):
-            # get round key
-            key = current_round['key']
-            st.session_state.rounds = [r for r in st.session_state.rounds if r['key']!=key]
-            st.rerun()
 
 def show_round_details(current_round, round_counter):
     '''
@@ -1106,17 +1029,15 @@ def show_round_details(current_round, round_counter):
     # with st.expander(f'Round {round_counter+1} - {current_round["round_type"].capitalize()}'):
     if not current_round: return
 
-    st.write(f'Round Details: Round {round_counter+1} - {current_round["round_type"].capitalize()}')
+    st.write(f'## Round {round_counter+1} - {current_round["round_type"].capitalize()}')
     round_type = current_round['round_type']
     round_metadata = Round_Types[round_type]
     round_segment_types = round_metadata['Segment_Types']
 
-    if round_type=='choice':
-        choices_shown_in_round = st.slider('Number of Choices Shown (*r*)', 2, key=f'slider_{round_counter}_{round_type}', help='''How many choices (r) to show to the LLM in this round. Maximum number of choices depends on n choose r (n: factor combination; r: choices shown to the LLM)''')
-        current_round['choices_shown_in_round'] = choices_shown_in_round
-    
-
-    with st.expander(f"# Factors for this Round"):
+    tab_factor, tab_segment = st.tabs(
+        ['Factors for this Round', 'Segments for this Round'],
+    )
+    with tab_factor:
         if current_round['round_type']=='ranking':
             show_factor_items_ranking(current_round, round_counter)
         elif current_round['round_type']=='choice':
@@ -1124,43 +1045,16 @@ def show_round_details(current_round, round_counter):
         elif current_round['round_type']=='scales':
             show_factor_items_scales(current_round, round_counter)
 
-    with st.expander(f"# Segments for this Round"):
-
+    with tab_segment:
         show_mixed_segments(round_segment_types, current_round, round_counter)
-        show_add_new_segment_to_round(round_segment_types, current_round)
+        
+        if st.button('Add Segment'):
+            show_add_new_segment_to_round_dialog(round_segment_types, current_round)
 
 
-    with st.expander(f'# Sample Text for LLM'):
-        show_sample_mixed(current_round, round_counter)
-
-    # if st.button(f'Remove Round {round_counter+1} - {current_round["round_type"].capitalize()}', key=f'remove_round_{round_counter}', width='stretch'):
-    #     # get round key
-    #     key = current_round['key']
-    #     st.session_state.rounds = [r for r in st.session_state.rounds if r['key']!=key]
-    #     st.rerun()
-
-def show_add_round():
-    with st.expander('Add New Round'):
-        col1, col2 = st.columns([1,1], vertical_alignment='bottom')
-        with col1:
-            round_type = st.selectbox('Round Type', [rt.capitalize() for rt in Round_Types.keys()], index=0, key='new round type selector').lower()
-
-        with col2:
-            if st.button('Add Round', key=f'button_add_round_', width='stretch'):
-                all_keys = [int(ritem_value) for r in st.session_state.rounds for ritem_key, ritem_value in r.items() if ritem_key=='key']
-                new_round_key = max(all_keys) + 1
-                new_round = dict(
-                    key = new_round_key,
-                    segments = [],
-                    factors_list = [],
-                    round_type = round_type
-                )
-                if round_type == 'choice':
-                    new_round['choices_shown_in_round'] = 2
-
-                st.session_state.rounds.append(new_round)
-                st.session_state.selected_round = new_round
-                st.rerun()
+    st.write('---')
+    if st.button('# Sample Text Shown to the LLM', width='stretch'):
+        show_sample_mixed_modal(current_round, round_counter)
 
 @st.dialog("Add New Round")
 def show_add_round_modal():
@@ -1171,8 +1065,10 @@ def show_add_round_modal():
 
     if st.button('Add Round', width='stretch'):
         # --- Your existing logic for creating the round ---
-        all_keys = [int(r['key']) for r in st.session_state.rounds] if st.session_state.rounds else [0]
-        new_round_key = max(all_keys) + 1
+        # all_keys = [int(r['key']) for r in st.session_state.rounds] if st.session_state.rounds else [0]
+        
+        # new_round_key = max(all_keys) + 1
+        new_round_key = str(uuid.uuid4())
         new_round = dict(
             key=new_round_key,
             segments=[],
@@ -1185,8 +1081,6 @@ def show_add_round_modal():
         st.session_state.rounds.append(new_round)
         st.session_state.selected_round = new_round
         
-        # Close the dialog and rerun
-        st.session_state['show_add_round_dialog'] = False
         st.rerun()
 
 def run_experiments():
@@ -1431,17 +1325,19 @@ def show_round_container():
     with st.container(border=True):
         if not st.session_state.get('rounds'):
             st.info(f'**No Rounds:** Create at least one round of conversation for the LLM.')
-            if st.button(":material/add:", use_container_width=True, type="secondary", key='add_round_modal_button_empty_round'):
+            if st.button(":material/add: Add Round", use_container_width=True, type="secondary", key='add_round_modal_button_empty_round'):
                 show_add_round_modal()
 
         else:
             col_master, col_details = st.columns(
-                [1,2], 
-                gap='large',
+                [1,3], 
+                gap='medium',
                 vertical_alignment='top',
+                border=False
             )
             with col_master:
-                row = st.columns([4, 1]) # Create a small column for the delete button
+                st.write('## Rounds')
+                row = st.columns([2, 1], gap='medium') # Create a small column for the delete button
                 for round_counter, current_round in enumerate(st.session_state.rounds):
                     with row[0]: # round buttons
                         # Check if this is the selected round
@@ -1480,13 +1376,14 @@ def show_round_container():
                             st.session_state.toast_text = f'Round {round_counter+1} - {current_round["round_type"].capitalize()} deleted'
 
                             st.rerun()
-                                
-                # with row[0]:
-                if st.button(":material/add:", use_container_width=True, type="secondary", key='add_round_modal_button'):
-                    show_add_round_modal()
+
+                with row[0]:                                
+                    if st.button(":material/add: Add New Round", use_container_width=True, type="secondary", key='add_round_modal_button', help='Add New Round'):
+                        show_add_round_modal()
 
             with col_details:
-                show_round_details(st.session_state.get('selected_round'), st.session_state.get('selected_round_counter', 0))
+                with st.container(border=False):
+                    show_round_details(st.session_state.get('selected_round'), st.session_state.get('selected_round_counter', 0))
 
 
 def render_mixed_experiment(selected_config_path):

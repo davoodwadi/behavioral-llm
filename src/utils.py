@@ -32,10 +32,10 @@ def get_llm_text_mixed_rank(current_round, factor_levels, block_variable_level=N
 
 def get_llm_text_mixed_choice(choice_combination, current_round):
     text_for_llm_sample_list = []
+    choices_display_order = []
     counter = 1   
     for segment in current_round['segments']:
         if 'Choice' in segment['segment_label']:
-            choices_display_order = []
             for choice in choice_combination:
                 extracted = {k.split('|')[0]:c[k] for c in choice for k in c.keys() if '|text' in k}
                 extracted_name = {k.split('|')[0]:c[k] for c in choice for k in c.keys() if '|name' in k}
