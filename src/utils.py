@@ -52,6 +52,9 @@ def get_llm_text_mixed_choice(choice_combination, current_round):
 
 def get_llm_text_mixed_scales(factor_product, current_round):
     # st.write(factor_product)
+    if not factor_product:
+        return '', []
+    
     d = {k.split('|')[0]:v for factor in factor_product for k,v in factor.items() if 'text' in k}
     factor_display = {k.split('|')[0]:v for factor in factor_product for k,v in factor.items() if 'name' in k}
     # st.write('d', d)

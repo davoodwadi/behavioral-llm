@@ -407,10 +407,7 @@ def show_sample_rank(current_round, round_counter):
     factor_levels_rank_permutations = get_rank_permutations(current_round)
     # st.write(factor_levels_rank_permutations)
     
-    if not factor_levels_rank_permutations:
-        return
-    
-    factor_levels_rank_permutation = random.choice(factor_levels_rank_permutations)
+    factor_levels_rank_permutation = random.choice(factor_levels_rank_permutations) if factor_levels_rank_permutations else []
     # st.write(factor_levels_rank_permutation)
     if st.button('Refresh Sample', width='stretch' ,key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
         if st.session_state.randomize:
@@ -420,10 +417,13 @@ def show_sample_rank(current_round, round_counter):
             
     formatted_text, ranking_display_order = get_llm_text_mixed_rank(current_round, factor_levels_rank_permutation, block_variable_level, block_variable_name) 
     
-    st.write('### Display Order')
-    for i, rank_display in enumerate(ranking_display_order):
-        st.write(f"{i+1}. {rank_display}" )
-    st.write('---')
+    if not ranking_display_order:
+        st.warning('No Ranking Factors')
+    else:
+        st.write('### Display Order')
+        for i, rank_display in enumerate(ranking_display_order):
+            st.write(f"{i+1}. {rank_display}" )
+        st.write('---')
     
     st.write('### LLM Text')
     st.write(formatted_text) 
@@ -433,10 +433,10 @@ def show_sample_choice(current_round, round_counter):
     # st.write(st.session_state.combinations[:2])
     combinations = get_choice_combinations(current_round)
     # st.write(len(combinations))
-    if not combinations:
-        return
+    # if not combinations:
+    #     return
 
-    sample = random.choice(combinations)
+    sample = random.choice(combinations) if combinations else []
 
     if st.session_state.randomize:
         random.shuffle(sample)
@@ -447,10 +447,14 @@ def show_sample_choice(current_round, round_counter):
             random.shuffle(sample)
  
     formatted_text, choices_display_order = get_llm_text_mixed_choice(sample, current_round) 
-    st.write('### Display Order')
-    for i, choice_display in enumerate(choices_display_order):
-        st.write(f"{i+1}. {choice_display}" )
-    st.write('---')
+
+    if not choices_display_order:
+        st.warning('No Choice Factors.')
+    else:
+        st.write('### Display Order')
+        for i, choice_display in enumerate(choices_display_order):
+            st.write(f"{i+1}. {choice_display}" )
+        st.write('---')
 
     st.write('### LLM Text')
     st.write(formatted_text)
@@ -459,11 +463,15 @@ def show_sample_choice(current_round, round_counter):
 def show_sample_scales(current_round, round_counter):
     factors_list = current_round.get('factors_list')
     
+    # st.write(factors_list)
+
     if not factors_list:
-        return 
+        factors_list = []
+        # st.warning('No scales factors. Add **at least** one factor.')
     
     factor_products = get_choice_factor_products(factors_list)
     factor_product = random.choice(factor_products)
+    # st.write('factor_product', factor_product)
 
     if st.button('Refresh Sample', width='stretch' , key=f'refresh_sample_{current_round["round_type"]}_{round_counter}'):
         factor_product = random.choice(factor_products)
