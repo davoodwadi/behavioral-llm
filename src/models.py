@@ -10,6 +10,7 @@ import anthropic
 from google import genai
 from google.genai import types
 import streamlit as st
+import pprint
 
 @dataclass
 class LLMResponse:
@@ -51,6 +52,14 @@ class OpenAIModel(LLM):
             messages = [{"role": "system", "content": system_prompt}]
             messages.extend(conversation_history)
 
+        # pprint.pprint(messages)
+        # pprint.pprint('*'*10)
+        # return LLMResponse(
+        #         content='',
+        #         response_time_ms=10,
+        #         raw_response='response'
+        #     )
+    
         try:
             start_time = time.time()
             response = self.client.chat.completions.create(
@@ -88,6 +97,17 @@ class AnthropicModel(LLM):
 
         if conversation_history:
             messages = conversation_history
+
+        # pprint.pprint('anthropic')        
+        # pprint.pprint(system_prompt)
+        # pprint.pprint(messages)
+        # pprint.pprint('*'*10)
+        # return LLMResponse(
+        #         content='',
+        #         response_time_ms=10,
+        #         raw_response='response'
+        #     )
+
         try:
             start_time = time.time()
             response = self.client.messages.create(

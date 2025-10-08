@@ -1,6 +1,5 @@
 FROM python:3.13.5-slim
-
-WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -8,11 +7,18 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-COPY src/ ./src/
-COPY config/ ./config/
+# Copy the project into the image
+ADD . /app
 
-RUN pip3 install -r requirements.txt
+WORKDIR /app
+RUN uv sync --locked
+# COPY requirements.txt ./
+# COPY src/ ./src/
+# COPY config/ ./config/
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+# RUN pip3 install -r requirements.txt
 
 EXPOSE 8501
 

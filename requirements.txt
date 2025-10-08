@@ -3,7 +3,6 @@ pandas
 plotly
 streamlit[charts]
 PyYAML
-tqdm
 openai
 anthropic
 google-genai
