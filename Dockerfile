@@ -1,5 +1,6 @@
-FROM python:3.13.5-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+FROM ghcr.io/astral-sh/uv:0.9.0
+# FROM python:3.13.5-slim
+# COPY --from=ghcr.io/astral-sh/uv:0.9.0 /uv /uvx /bin/
 
 RUN apt-get update && apt-get install -y \
     build-essential \

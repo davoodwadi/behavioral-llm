@@ -1,3 +1,3 @@
 # Behavioral LLM
 
-[Link](https://behavioral-llm.streamlit.app/)
+[Link](https://behavioral-llm.com/)
