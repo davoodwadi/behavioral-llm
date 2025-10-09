@@ -13,13 +13,8 @@ ADD . /app
 
 WORKDIR /app
 RUN uv sync --locked
-# COPY requirements.txt ./
-# COPY src/ ./src/
-# COPY config/ ./config/
 
 ENV PATH="/app/.venv/bin:$PATH"
-
-# RUN pip3 install -r requirements.txt
 
 EXPOSE 8501
 

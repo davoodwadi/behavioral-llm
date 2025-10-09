@@ -2,67 +2,60 @@ system_prompt: You are a consumer in a market research study. Your task is to pr
   answers to the questions given. Please respond with ONLY the digit of the response.
   Do not provide any other text, explanation, or punctuation.
 rounds:
-- key: '3'
-  segments:
-  - segment_label: Fixed Segment
-    segment_text: "**Instructions:**\n\nPlease indicate your agreement with the statement\
-      \ below with a number between 1 and 7. \n1: Strongly disagree\n7: Strongly agree"
-    segment_id: 5b8fdsdfd
-  - segment_label: Treatment Segment
-    segment_text: '**Statement**
-
-
-      {size}
-
-
-      {nationality} people should always buy {nationality}-made {product}s instead
-      of imports.'
-    segment_id: 29fsdfsde8d
-  round_type: scales
+- key: cc9c9d09-8456-4894-880e-c72c1ca54c8a
+  segment: '{product} {country} {nationality}'
   factors_list:
-  - - nationality
-    - - nationality|name: america
-        nationality|text: American
-      - nationality|name: china
-        nationality|text: Chinese
   - - product
-    - - product|name: tv
-        product|text: TV
-      - product|name: tablet
-        product|text: Tablet
-  factor_products:
-  - - nationality|name: american
-      nationality|text: American
-  - - nationality|name: chinese
-      nationality|text: Chinese
-- key: 549b110f-588d-46af-aa4f-f28b1573a5fa
-  segments:
-  - segment_label: Treatment Segment
-    segment_text: '**Statement**
-
-
-      Only those products that are unavailable in {country} should be imported. '
-    segment_id: '78737'
+    - - product|name: Name 1
+        product|text: Text 1
+      - product|name: Name 2
+        product|text: Text 2
+  round_type: choice
+  choices_shown_in_round: 2
+- key: f0b45e9f-8da7-4ea3-8c18-6a395ec13e29
+  segment: '{brand}'
   factors_list:
-  - - country
-    - - country|name: america
-        country|text: the U.S.
-      - country|name: china
-        country|text: China
+  - - brand
+    - - brand|name: Name 1
+        brand|text: Text 1
+      - brand|name: Name 2
+        brand|text: Text 2
+  round_type: ranking
+- key: d680056e-9171-422d-9178-25092d8c406a
+  segment: '{product} {brand} {country}'
+  factors_list:
+  - - product
+    - - product|name: Name 1
+        product|text: Text 1
+      - product|name: Name 2
+        product|text: Text 2
+      - product|name: Name 3
+        product|text: Text 3
+  - - brand
+    - - brand|name: Name 1
+        brand|text: Text 1
+      - brand|name: Name 2
+        brand|text: Text 2
   round_type: scales
 block_variables:
-- - size
-  - - size|name: small
-      size|text: Small
-    - size|name: large
-      size|text: Large
-k: 10
+- - country
+  - - country|name: america
+      country|text: America
+      country|group_id: us
+    - country|name: china
+      country|text: China
+      country|group_id: china
+- - nationality
+  - - nationality|name: chinese
+      nationality|text: chinese
+      nationality|group_id: china
+    - nationality|name: american
+      nationality|text: American
+      nationality|group_id: us
+k: 1
 test: true
 sleep_amount: 0.05
 models_to_test:
-- google-gemini-2.5-flash-lite
-- deepinfra-deepseek-ai/DeepSeek-V3.1-Terminus
-- openai-gpt-4.1-nano
 - anthropic-claude-3-5-haiku-20241022
 randomize: true
 paper_url: https://doi.org/10.1177/002224378702400304
