@@ -1,4 +1,7 @@
 import streamlit as st
+
+# from streamlit_profiler import Profiler
+
 import pandas as pd
 import plotly.express as px
 
@@ -429,24 +432,15 @@ def show_mixed_segments(current_round, round_counter):
         #     st.warning(f"**Missing or incorrectly formatted factors:** {missing_factors_formatted}")
     # st.write("current_round['segment']", current_round['segment'])
 
-
-def get_config_to_save():
-    factors_to_save = factors_to_save_dict['mixed']
+@st.cache_data
+def get_config_to_save(factors_to_save):
     # config = load_experiment_config(st.session_state.selected_config_path)
     config_to_save = dict()
     for factor_to_save in factors_to_save:
         config_to_save[factor_to_save] = st.session_state.get(factor_to_save)
     return config_to_save
 
-def get_rank_permutations(current_round):
-    factors_list = current_round.get('factors_list')
-    if not factors_list:
-        return []
-    factor_name, factor_levels_rank = factors_list[0]
-    factor_levels_rank_permutations = list(itertools.permutations(factor_levels_rank, len(factor_levels_rank)))
-    factor_levels_rank_permutations_list = [list(permutation) for permutation in factor_levels_rank_permutations]
-    return factor_levels_rank_permutations_list
-
+@st.cache_data
 def get_rank_permutations_multi_factor(factors_list):
     if not factors_list:
         return []
@@ -466,210 +460,31 @@ def show_sample_mixed_modal(current_round, round_counter):
         show_sample_choice(current_round, round_counter)
     elif current_round['round_type']=='scales':
         show_sample_scales(current_round, round_counter)
-
-def show_download_save_config(config_to_save, selected_config_path):
-    if not is_prod:
-        col_download, col_save = st.columns(2)
-        with col_download:
-            st.download_button(
-            "Download Config",
-            yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
-            f"{selected_config_path}",
-            "text/yaml",
-            key='download-yaml',
-            width='stretch'
-            )
-        
-        with col_save:
-            if st.button("Save config", type="secondary", width='stretch'):
-                st.write(selected_config_path)
-                with open(selected_config_path,'w') as f:
-                    yaml.dump(config_to_save, f, sort_keys=False, Dumper=NoAliasDumper)
-    else:
-        st.download_button(
-            "Download Config",
-            yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
-            f"{selected_config_path}",
-            "text/yaml",
-            key='download-yaml',
-            width='stretch'
-        )
-        
-def start_run_callback():
-    st.session_state.is_running = True
-    st.session_state.stop_requested = False
-
-def stop_run_callback():
-    st.session_state.stop_requested = True
-    # st.toast("Experiment interruption requested. Waiting for current iteration to finish.")
- 
-def process_uploaded_results_csv():
-    # Get the uploaded file from session state using the key.
-    uploaded_file = st.session_state.csv_results_uploader
-    
-    if uploaded_file is not None:
-        try:
-            # To read the file as a string
-            stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-            # string_data = stringio.read()
-            csv_df = pd.read_csv(stringio)
-            csv_dict = csv_df.to_dict(orient='records')
-            # st.write('csv_dict', csv_dict)
-            st.session_state.results = csv_dict
-            # return csv_data
-            # store the config in state for reset_config
-            # st.session_state['csv_dict'] = csv_dict
-
-            st.success(f"Successfully loaded configuration from '{uploaded_file.name}'!")
-        
-        except Exception as e:
-            st.error(f"Error processing CSV file: {e}")
-
-def parse_round_info(df_columns):
-    """
-    Parses DataFrame columns to identify rounds, their types, factors, and response columns.
-    
-    Args:
-        df_columns (list): A list of column names from the results DataFrame.
-
-    Returns:
-        dict: A dictionary where keys are round numbers and values are dicts
-              containing 'type', 'factor_col', and 'response_col'.
-              e.g., {0: {'type': 'scales', 'factor_col': '...', 'response_col': '...'}}
-    """
-    rounds_info = defaultdict(dict)
-    # Regex to capture: 1: round number, 2: type, 3: rest of the name
-    pattern = re.compile(r"round(\d+)_(\w+)_(\w+.*)")
-
-    for col in df_columns:
-        match = pattern.match(col)
-        if match:
-            round_num, round_type, name_part = match.groups()
-
-            
-            if 'raw' in round_type:
-                continue
-
-            round_num = int(round_num)
-            
-            rounds_info[round_num]['type'] = round_type
-
-            if 'factor' in col:
-                rounds_info[round_num]['factor_col'] = col
-            elif 'response' in col:
-                rounds_info[round_num]['response_col'] = col
-                
-    return dict(rounds_info)
-
-def analyze_scales(df, model_col, factor_col, response_col):
-    """Analyzes Likert scale data by calculating mean and std dev."""
-    st.markdown(f"Grouping by `{model_col}` and `{factor_col}`. Aggregating `{response_col}`.")
-    
-    analysis_df = df.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
-    analysis_df = analysis_df.round(2)
-
-    st.dataframe(analysis_df)
-
-    fig = px.bar(
-        analysis_df,
-        x=factor_col,
-        y='mean',
-        color=model_col,
-        barmode='group',
-        error_y='std',
-        title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
-        labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
-    )
-    plotly_config = dict(
-        width='stretch'
-    )
-    st.plotly_chart(fig, config=plotly_config)
-
-def analyze_choice(df, model_col, factor_col, response_col):
-    """Analyzes categorical choice data by counting occurrences."""
-    st.markdown(f"Counting `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
-
-    analysis_df = df.groupby([model_col, factor_col, response_col]).size().reset_index(name='count')
-    
-    st.dataframe(analysis_df)
-
-    fig = px.bar(
-        analysis_df,
-        x=factor_col,
-        y='count',
-        color=response_col,
-        facet_col=model_col, # Creates separate charts for each model
-        title=f"Choice Counts by {factor_col.split('_')[-1].title()} per Model",
-        labels={'count': 'Count', factor_col: factor_col.split('_')[-1].title()}
-    )
-    plotly_config = dict(
-        width='stretch'
-    )
-    st.plotly_chart(fig, config=plotly_config)
-
-def analyze_ranking(df, model_col, factor_col, response_col):
-    """Analyzes ranking data by calculating mean rank."""
-    st.markdown(f"Analyzing mean rank of `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
-    
-    # This analysis is identical to 'scales', so we can reuse the function
-    analyze_scales(df, model_col, factor_col, response_col)
-
-def run_analysis(df):
-    st.write('# Analysis')
-    
-    rounds_info = parse_round_info(df.columns)
-    if not rounds_info:
-        st.error("Could not find any columns matching the 'round<N>_<type>_<name>' pattern.")
-        return
-
-    # Sort rounds by number to ensure chronological order
-    for round_num in sorted(rounds_info.keys()):
-        info = rounds_info[round_num]
-        # st.write('info', info)
-        round_type = info.get('type', 'unknown')
-        round_type_clean = 'scales' if 'scales' in round_type.lower() else 'ranking' if 'ranking' in round_type.lower() else 'choice' if 'choice' in round_type.lower() else None
-        factor_col = info.get('factor_col')
-        response_col = info.get('response_col')
-
-        with st.expander(f"### Round {round_num+1}: {round_type_clean.capitalize()}", expanded=True):
-            if not factor_col or not response_col:
-                st.warning(f"Skipping Round {round_num}. Missing factor or response column in data.")
-                continue
-
-            # Filter out rows where the necessary columns for this round are NaN
-            # This is important because not all rows have data for all rounds
-            round_df = df[['model_name', factor_col, response_col]].dropna()
-            # st.dataframe(round_df)
-            if round_df.empty:
-                st.info(f"No data available for Round {round_num}.")
-                continue
-
-            # Dispatch to the correct analysis function based on type
-            if round_type_clean == 'scales':
-                analyze_scales(round_df, 'model_name', factor_col, response_col)
-            elif round_type_clean == 'choice':
-                analyze_choice(round_df, 'model_name', factor_col, response_col)
-            elif round_type_clean == 'ranking':
-                st.write('factor_col', factor_col)
-                analyze_ranking(round_df, 'model_name', factor_col, response_col)
-                
+       
+       
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+   
 def show_results(df, selected_config_path):
     st.success(f"Experiment Run Complete.")
 
     st.write('---')
     st.write('# Results')
  
-    st.dataframe(df, width='stretch')
+    st.dataframe(df.head(1000), width='stretch')
     fn = Path(selected_config_path)
     fn = f'{fn.stem}.csv'
+    csv_df = convert_df_to_csv(df)
     st.download_button(
         "Download results",
-        df.to_csv(index=False),
+        csv_df,
         fn,
         "text/csv",
         key='download-csv',
         width='stretch',
     )
+    
 
 def show_mixed_experiment_execution(selected_config_path):
     # The 'Start' button is only active when not running.
@@ -731,7 +546,7 @@ def show_mixed_experiment_execution(selected_config_path):
         df = pd.DataFrame(st.session_state['results'])
         
         show_results(df, selected_config_path)
-
+        # st.write(df.to_csv())
         run_analysis(df)
     
 def remove_factor_from_state(factor_name, current_round):
@@ -762,8 +577,6 @@ def show_add_factor_dialog(current_round, round_counter):
 
         st.rerun()        
 
-
-
 def show_factor_combinations_mixed(current_round, round_counter):
     with st.container(border=True):
         # --- Calculate all values first ---
@@ -784,7 +597,6 @@ def show_factor_combinations_mixed(current_round, round_counter):
         factorial_text_display_details = ' x '.join(l)
         st.caption(f"{factorial_text_display_details}")
         
-
 def show_factors_and_levels_mixed(current_round, round_counter):
     for factor_tuple in (current_round['factors_list']):
         factor_name = factor_tuple[0] # product
@@ -835,12 +647,13 @@ def mix_block_factor_variables(factors_products, block_variable_products):
     full_products = [[*bvp, *fp] for fp in factors_products for bvp in block_variable_products]
     return full_products
     
-
+@st.cache_data
 def get_choice_factor_products(factors_list):        
     factor_levels = [fl[1] for fl in factors_list]
     factor_products = [list(p) for p in itertools.product(*factor_levels)]
     return factor_products
 
+@st.cache_data
 def get_choice_permutations(factors_list, num_choices):
     if factors_list:
         factor_products = get_choice_factor_products(factors_list)
@@ -948,7 +761,6 @@ def show_factor_items_ranking(current_round, round_counter):
         if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
             show_add_factor_dialog(current_round, round_counter)
 
-
 def show_factor_items_choice(current_round, round_counter):
     
     if not current_round.get('factors_list'):
@@ -979,7 +791,6 @@ def show_factor_items_choice(current_round, round_counter):
             current_round['choices_shown_in_round'] = choices_shown_in_round
             st.rerun()
     
-
 def show_factor_items_scales(current_round, round_counter):
     if not current_round.get('factors_list'):
         st.info(f'No scales factors. Add at least one factor.')
@@ -992,7 +803,6 @@ def show_factor_items_scales(current_round, round_counter):
 
     if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
         show_add_factor_dialog(current_round, round_counter)
-
 
 
 def show_round_details(current_round, round_counter):
@@ -1046,6 +856,7 @@ def show_add_round_modal():
         
         st.rerun()
 
+
 def run_experiments():
     api_keys = st.session_state['api_keys']
     models_objects_to_test = [get_model(name, api_keys) for name in st.session_state.models_to_test]
@@ -1055,19 +866,12 @@ def run_experiments():
     rounds = st.session_state.get('rounds')
     if not rounds: return
 
-    rounds_factor_combinations = get_rounds_factor_combinations()
+    rounds_factor_combinations = get_rounds_factor_combinations(rounds)
     
-    # st.write('len(rounds_factor_combinations)', len(rounds_factor_combinations))
-    # st.write(rounds_factor_combinations)
     all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)
-        
-    # st.write('len(all_rounds_combinations)', len(all_rounds_combinations))
-    # st.write('(all_rounds_combinations)', (all_rounds_combinations))
     
-    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations)
-    
-    # st.write('len(block_added_all_rounds_combinations_deduped)', len(block_added_all_rounds_combinations_deduped))
-
+    block_variables = st.session_state.get('block_variables', [])    
+    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
     
     total_iterations = total_models_to_test * len(block_added_all_rounds_combinations_deduped) * st.session_state.k
 
@@ -1148,7 +952,7 @@ def run_combination(rounds_combination, iteration, model, results, progress_trac
             # st.write('---')
             if factor_display:    
                 for key, value in factor_display.items():        
-                    trial_data[f'round{j}_factor_{key}'] = value
+                    trial_data[f'round{j}_scales_{key}'] = value
         
         # st.write(formatted_text)
         list_of_messages.append({'role':'user','content':formatted_text}) # user_message
@@ -1179,14 +983,6 @@ def run_combination(rounds_combination, iteration, model, results, progress_trac
     progress_made = int((progress_tracker.counter/progress_tracker.total_iterations)*100)
     progress_tracker.progress_bar.progress(progress_made, text=f"Experiments executed: {progress_tracker.counter}")
     # end round
-
-@dataclass
-class ProgressTracker:
-    """Standardized response object for all LLM queries."""
-    counter: int
-    progress_bar: Any
-    total_iterations: int
-
 
 def call_model_for_user_message(model, user_message, current_round, history=[]):
     if st.session_state.test:
@@ -1244,6 +1040,8 @@ def call_model_for_user_message(model, user_message, current_round, history=[]):
                 parsed_choice = e
     return response_data, parsed_choice
 
+
+
 def get_segment_text_from_segments_list(current_round):
 
     if not current_round['segment']:
@@ -1257,7 +1055,6 @@ def get_segment_text_from_segments_list(current_round):
 
 def filter_factors_list(factors_list, round_segment_variables):
     return [fac for fac in (factors_list) if fac[0] in round_segment_variables]
-
 
 def group_id_in_segment_variables(round_segment_variables, block_variable_name, block_variable_level, block_variables):
     # st.write('block_variable_name::::::::::::', block_variable_name)
@@ -1292,8 +1089,8 @@ def remove_dupes_from_complex_list(complex_list):
     
     return new_list
 
-def get_rounds_factor_combinations():
-    rounds = st.session_state.get('rounds')
+@st.cache_data
+def get_rounds_factor_combinations(rounds):
     # st.write(rounds)
 
     rounds_factor_combinations = []
@@ -1323,18 +1120,16 @@ def get_rounds_factor_combinations():
         
     return rounds_factor_combinations
 
-
+@st.cache_data
 def get_all_rounds_combinations(rounds_factor_combinations):
     all_rounds_combinations = list(itertools.product(*rounds_factor_combinations))
     all_rounds_combinations = [list(combo) for combo in all_rounds_combinations]
     return all_rounds_combinations
 
-def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations):
+@st.cache_data
+def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables):
 
-    rounds = st.session_state.get('rounds')
-    
-    block_variables = st.session_state.get('block_variables', [])
-    
+     
     if len(block_variables)<1:
         return all_rounds_combinations
     else:
@@ -1412,6 +1207,7 @@ def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations):
     return block_added_all_rounds_combinations_deduped
 
 
+
 def show_sample_ranking(current_round, round_counter):
 
     
@@ -1420,12 +1216,12 @@ def show_sample_ranking(current_round, round_counter):
         st.warning('No Rounds. Add at least one round.')
         return
 
-    rounds_factor_combinations = get_rounds_factor_combinations()
+    rounds_factor_combinations = get_rounds_factor_combinations(rounds)
     
     all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)    
     # st.write(all_rounds_combinations)
-    
-    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations)
+    block_variables = st.session_state.get('block_variables', [])    
+    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
     # st.write(block_added_all_rounds_combinations_deduped)
     # get a combination
     combo = block_added_all_rounds_combinations_deduped[0]
@@ -1453,7 +1249,6 @@ def show_sample_ranking(current_round, round_counter):
     st.write(formatted_text) 
     st.write('---')
     
-
 def show_sample_choice(current_round, round_counter):
 
 
@@ -1462,7 +1257,7 @@ def show_sample_choice(current_round, round_counter):
         st.warning('No Rounds. Add at least one round.')
         return
 
-    rounds_factor_combinations = get_rounds_factor_combinations()
+    rounds_factor_combinations = get_rounds_factor_combinations(rounds)
     
     # st.write('rounds_factor_combinations', rounds_factor_combinations)
     
@@ -1471,7 +1266,8 @@ def show_sample_choice(current_round, round_counter):
     # st.write('all_rounds_combinations', all_rounds_combinations)
     
     
-    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations)
+    block_variables = st.session_state.get('block_variables', [])    
+    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
     
     # st.write('block_added_all_rounds_combinations_deduped', block_added_all_rounds_combinations_deduped)
     
@@ -1510,12 +1306,13 @@ def show_sample_scales(current_round, round_counter):
         st.warning('No Rounds. Add at least one round.')
         return
 
-    rounds_factor_combinations = get_rounds_factor_combinations()
+    rounds_factor_combinations = get_rounds_factor_combinations(rounds)
     # st.write('rounds_factor_combinations', rounds_factor_combinations)
     all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)    
     # st.write('all_rounds_combinations', all_rounds_combinations)
-    
-    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations)
+
+    block_variables = st.session_state.get('block_variables', [])    
+    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
     # st.write('block_added_all_rounds_combinations_deduped', block_added_all_rounds_combinations_deduped)
     
     # get a combination
@@ -1547,16 +1344,12 @@ def show_experiment_combinations():
     rounds = st.session_state.get('rounds')
     if not rounds: return
 
-    rounds_factor_combinations = get_rounds_factor_combinations()
+    rounds_factor_combinations = get_rounds_factor_combinations(rounds)
     
-    # st.write('len(rounds_factor_combinations)', len(rounds_factor_combinations))
-    # st.write(rounds_factor_combinations)
     all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)
-        
-    # st.write('len(all_rounds_combinations)', len(all_rounds_combinations))
-    # st.write('(all_rounds_combinations)', (all_rounds_combinations))
-    
-    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations)
+            
+    block_variables = st.session_state.get('block_variables', [])    
+    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
     
     # st.write('len(block_added_all_rounds_combinations_deduped)', len(block_added_all_rounds_combinations_deduped))
     # st.write('block_added_all_rounds_combinations_deduped', block_added_all_rounds_combinations_deduped)
@@ -1583,11 +1376,6 @@ def show_experiment_combinations():
             st.metric(label="Total Combinations", value=len(block_added_all_rounds_combinations_deduped))
         with col3:
             st.metric(label="Total Iterations", value=total_iterations)
-
-def show_toast():
-    if st.session_state.get('show_toast'):
-        st.toast(st.session_state.get('toast_text'))
-        st.session_state.show_toast = False
 
 def show_round_container():
     st.write('## User Message Rounds')
@@ -1662,12 +1450,12 @@ def show_round_container():
                 with st.container(border=False):
                     show_round_details(st.session_state.get('selected_round'), st.session_state.get('selected_round_counter', 0))
 
-
 def render_mixed_experiment(selected_config_path):
+    
     show_toast()
     st.markdown("# Run a Behavioral Experiment on an LLM")
     st.markdown("**Select a configuration file, choose the LLMs, and modify the run parameters.**")
-       
+    
     st.file_uploader(
         "Upload a YAML configuration file for a predefined experiment.",
         type=['yaml', 'yml'],
@@ -1690,9 +1478,10 @@ def render_mixed_experiment(selected_config_path):
 
     show_block_variables()
     # st.write(st.session_state.rounds)
+    # with Profiler():
     show_round_container()
 
-    config_to_save = get_config_to_save()
+    config_to_save = get_config_to_save(factors_to_save_dict['mixed'])
     # st.write(config_to_save)
 
     show_experiment_combinations()
@@ -1700,9 +1489,165 @@ def render_mixed_experiment(selected_config_path):
     show_download_save_config(config_to_save, selected_config_path)
 
     show_mixed_experiment_execution(selected_config_path)
-   
-     
+    
+
+
+
+def run_analysis(df):
+    with st.expander('# Analysis', expanded=False):
+        # st.write('')
+        st.write(df.iloc[:3].to_csv())
+        
+        rounds_info = parse_round_info(df.columns)
+        if not rounds_info:
+            st.error("Could not find any columns matching the 'round<N>_<type>_<name>' pattern.")
+            return
+
+        st.write('rounds_info', rounds_info)
+        # Sort rounds by number to ensure chronological order
+        for round_num in sorted(rounds_info.keys()):
+            info = rounds_info[round_num]
+            # st.write('info', info)
+            round_type = info.get('type', 'unknown')
+            round_type_clean = 'scales' if 'scales' in round_type.lower() else 'ranking' if 'ranking' in round_type.lower() else 'choice' if 'choice' in round_type.lower() else None
+            factor_col = info.get('factor_col')
+            response_col = info.get('response_col')
+
+            with st.expander(f"### Round {round_num+1}: {round_type_clean.capitalize()}", expanded=True):
+                if not factor_col or not response_col:
+                    st.warning(f"Skipping Round {round_num}. Missing factor or response column in data.")
+                    continue
+
+                # Filter out rows where the necessary columns for this round are NaN
+                # This is important because not all rows have data for all rounds
+                round_df = df[['model_name', factor_col, response_col]].dropna()
+                # st.dataframe(round_df)
+                if round_df.empty:
+                    st.info(f"No data available for Round {round_num}.")
+                    continue
+
+                # Dispatch to the correct analysis function based on type
+                # if round_type_clean == 'scales':
+                #     analyze_scales(round_df, 'model_name', factor_col, response_col)
+                # elif round_type_clean == 'choice':
+                #     analyze_choice(round_df, 'model_name', factor_col, response_col)
+                # elif round_type_clean == 'ranking':
+                #     st.write('factor_col', factor_col)
+                #     analyze_ranking(round_df, 'model_name', factor_col, response_col)
+
+
+def analyze_scales(df, model_col, factor_col, response_col):
+    """Analyzes Likert scale data by calculating mean and std dev."""
+    st.markdown(f"Grouping by `{model_col}` and `{factor_col}`. Aggregating `{response_col}`.")
+    
+    analysis_df = df.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
+    analysis_df = analysis_df.round(2)
+
+    st.dataframe(analysis_df)
+
+    fig = px.bar(
+        analysis_df,
+        x=factor_col,
+        y='mean',
+        color=model_col,
+        barmode='group',
+        error_y='std',
+        title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
+        labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
+    )
+    plotly_config = dict(
+        width='stretch'
+    )
+    st.plotly_chart(fig, config=plotly_config)
+
+def analyze_choice(df, model_col, factor_col, response_col):
+    """Analyzes categorical choice data by counting occurrences."""
+    st.markdown(f"Counting `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
+
+    analysis_df = df.groupby([model_col, factor_col, response_col]).size().reset_index(name='count')
+    
+    st.dataframe(analysis_df)
+
+    fig = px.bar(
+        analysis_df,
+        x=factor_col,
+        y='count',
+        color=response_col,
+        facet_col=model_col, # Creates separate charts for each model
+        title=f"Choice Counts by {factor_col.split('_')[-1].title()} per Model",
+        labels={'count': 'Count', factor_col: factor_col.split('_')[-1].title()}
+    )
+    plotly_config = dict(
+        width='stretch'
+    )
+    st.plotly_chart(fig, config=plotly_config)
+
+def analyze_ranking(df, model_col, factor_col, response_col):
+    """Analyzes ranking data by calculating mean rank."""
+    st.markdown(f"Analyzing mean rank of `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
+    
+    # This analysis is identical to 'scales', so we can reuse the function
+    analyze_scales(df, model_col, factor_col, response_col)
+      
+
+def parse_round_info(columns):
+    rounds_info = {}
+    
+    for col in columns:
+        if not 'round' in col:
+            continue
+        parts = col.split('_')
+        (round_num_segment, *rest) = parts
+        assert 'round' in round_num_segment
+        round_num_list = re.findall(r'\d+', round_num_segment)
+        assert round_num_list
+        round_num = int(round_num_list[0])
+        
+        if not rounds_info.get(round_num):
+            rounds_info[round_num] = dict()
+        
+        (round_type, *others) = rest
+        
+        rounds_info[round_num]['type'] = round_type
+        
+        if '_llm_response' in col:
+            st.write(col)
+            rounds_info[round_num]['response_col'] = col
+            
+        if round_type=='choice':
+            choice_items = rounds_info[round_num].get('choice_items')
+            if not choice_items:
+                rounds_info[round_num]['choice_items'] = dict()
+            try:
+                choice_number = int(others[0])
+                # rounds_info[round_num]['choice_number'] = choice_number
+                
+                choice_factor = (others[1])
+                # rounds_info[round_num]['choice_factors'].append(choice_factor)
+                
+                rounds_info[round_num]['choice_items'][choice_number] = choice_factor
+                
+                # choice_number_item = rounds_info[round_num].get(choice_number)
+                # if not choice_number_item:
+                #     rounds_info[round_num][choice_number] = [choice_factor]
+                # else:
+                #     rounds_info[round_num][choice_number].append(choice_factor)
+                
+
+                
+            except Exception as e:
+                # st.write(e)
+                pass
+            
+        # st.write('others', others)
+        # st.write('---')
+        
+    return rounds_info
+
+
+ 
 def main():
+    
     config_path = config_paths['mixed']
     config = load_experiment_config(config_path)
 
@@ -1731,6 +1676,81 @@ def load_experiment_config(path_str):
     except yaml.YAMLError as e:
         st.error(f"Error parsing YAML file: {e}")
         return None
+
+def show_toast():
+    if st.session_state.get('show_toast'):
+        st.toast(st.session_state.get('toast_text'))
+        st.session_state.show_toast = False
+
+@dataclass
+class ProgressTracker:
+    """Standardized response object for all LLM queries."""
+    counter: int
+    progress_bar: Any
+    total_iterations: int
+
+
+def show_download_save_config(config_to_save, selected_config_path):
+    if not is_prod:
+        col_download, col_save = st.columns(2)
+        with col_download:
+            st.download_button(
+            "Download Config",
+            yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
+            f"{selected_config_path}",
+            "text/yaml",
+            key='download-yaml',
+            width='stretch'
+            )
+        
+        with col_save:
+            if st.button("Save config", type="secondary", width='stretch'):
+                st.write(selected_config_path)
+                with open(selected_config_path,'w') as f:
+                    yaml.dump(config_to_save, f, sort_keys=False, Dumper=NoAliasDumper)
+    else:
+        st.download_button(
+            "Download Config",
+            yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
+            f"{selected_config_path}",
+            "text/yaml",
+            key='download-yaml',
+            width='stretch'
+        )
+        
+def start_run_callback():
+    st.session_state.is_running = True
+    st.session_state.stop_requested = False
+
+def stop_run_callback():
+    st.session_state.stop_requested = True
+    # st.toast("Experiment interruption requested. Waiting for current iteration to finish.")
+ 
+def process_uploaded_results_csv():
+    # Get the uploaded file from session state using the key.
+    uploaded_file = st.session_state.csv_results_uploader
+    
+    if uploaded_file is not None:
+        try:
+            # To read the file as a string
+            stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+            # string_data = stringio.read()
+            csv_df = pd.read_csv(stringio)
+            csv_dict = csv_df.to_dict(orient='records')
+            # st.write('csv_dict', csv_dict)
+            st.session_state.results = csv_dict
+            # return csv_data
+            # store the config in state for reset_config
+            # st.session_state['csv_dict'] = csv_dict
+
+            st.success(f"Successfully loaded configuration from '{uploaded_file.name}'!")
+        
+        except Exception as e:
+            st.error(f"Error processing CSV file: {e}")
+
+
+
+
 
 if __name__ == "__main__":
     main()

@@ -88,6 +88,7 @@ dependencies = [
     { name = "plotly" },
     { name = "pyyaml" },
     { name = "streamlit", extra = ["charts"] },
+    { name = "streamlit-profiler" },
 ]
 
 [package.metadata]
@@ -100,6 +101,7 @@ requires-dist = [
     { name = "plotly", specifier = ">=6.3.1" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "streamlit", extras = ["charts"], specifier = ">=1.50.0" },
+    { name = "streamlit-profiler", specifier = ">=0.2.4" },
 ]
 
 [[package]]
@@ -1617,6 +1619,21 @@ wheels = [
 ]
 
 [[package]]
+name = "pyinstrument"
+version = "4.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/e2/50b0d2c7c9b6eadfbc6902b4b908327d62023641c8a364b604029f7f44a2/pyinstrument-4.1.1.tar.gz", hash = "sha256:1dc2791d2cd2fd3459cb55010004a5cc2a9a8b4625a0cbea45a4b1aebbe2c3a2", size = 368060, upload-time = "2021-11-14T19:25:18.157Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/4a/13f94446ac27fb78aa5d8a5403a66868965a96d12f4e690116b4e3e0402f/pyinstrument-4.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:fd0b92d9dfe97222e65ecec811e2923776f096f8df8a53ece24db18683755131", size = 95681, upload-time = "2021-11-14T19:24:48.904Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/11/56de37d821c3ffcae50bd031ce7902720b15dfb2708cf883abdd049d8781/pyinstrument-4.1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:15837ac5188334d684555f1edc7ea3cf4e859ccb12fc813353cff30f327ea23f", size = 91079, upload-time = "2021-11-14T19:24:50.419Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/83/dc25eb02b465503c5e9f9dc20b629880178a89ac0cf060018dad70ae859c/pyinstrument-4.1.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f7dad2844048cf1438dfccdc1a126711a422cc1fb4b2989685b727ae85af27d7", size = 106423, upload-time = "2021-11-14T19:24:51.228Z" },
+    { url = "https://files.pythonhosted.org/packages/91/01/8d3671f1a3b0897e5a6021c08cba9c04f432abcfb9b8fa225d3d945fdcc7/pyinstrument-4.1.1-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:848d7cd1e8a6b6d8efc3a0658f949ca8e05e0fd008101d22ec2c720079840ae0", size = 109746, upload-time = "2021-11-14T19:24:52.498Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/cf/10ddd1215839aa7ad3e5f34d4d48d3b88058a55b06fe1d86c15a33d67d97/pyinstrument-4.1.1-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:d156d80cea866a3f67fab750acce6b2e8c7f3dcb6aceb33c20f0baee49ff078e", size = 110482, upload-time = "2021-11-14T19:24:53.866Z" },
+    { url = "https://files.pythonhosted.org/packages/94/2c/d849d74959aa557ddbd436976876a6b257846a1d48d259f2332ad00d07dd/pyinstrument-4.1.1-cp310-cp310-win32.whl", hash = "sha256:4776484afbdf9cc1ec090f5933ec297a4b38e545dace4728b29d3d338c037898", size = 93901, upload-time = "2021-11-14T19:24:54.836Z" },
+    { url = "https://files.pythonhosted.org/packages/40/b8/a7e58a7e1399c6332021ea60036b6bbd31fb827eeeb6e3b62a689bcc0f62/pyinstrument-4.1.1-cp310-cp310-win_amd64.whl", hash = "sha256:917017b100efce161b9de0cd3aa60a8bc177a95ce8c6c195269b4b4a9fbea169", size = 94722, upload-time = "2021-11-14T19:24:56.093Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.2.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1949,6 +1966,19 @@ charts = [
     { name = "matplotlib" },
     { name = "orjson" },
     { name = "plotly" },
+]
+
+[[package]]
+name = "streamlit-profiler"
+version = "0.2.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyinstrument" },
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f4/ec/23e0cc71902cae6373fcbf76d76bbae423908b53279aa2fc2e9c01ddbef7/streamlit-profiler-0.2.4.tar.gz", hash = "sha256:0d87494abdbd9d8372fc004360e06e18dfce316432853d210334026bf616cd2b", size = 3850, upload-time = "2021-12-20T00:21:10.313Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/9a/56378a39d060b2ac883e947c23aaa8688ad7991636151e68ec08b264a37e/streamlit_profiler-0.2.4-py3-none-any.whl", hash = "sha256:66b0a95da4bd2377ee1c7c9020f5b535bb03cd77ffe801b341dfaa2490676506", size = 3939, upload-time = "2021-12-20T00:21:12.572Z" },
 ]
 
 [[package]]
