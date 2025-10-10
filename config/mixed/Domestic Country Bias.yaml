@@ -3,38 +3,40 @@ system_prompt: You are a consumer in a market research study. Your task is to pr
   Do not provide any other text, explanation, or punctuation.
 rounds:
 - key: cc9c9d09-8456-4894-880e-c72c1ca54c8a
-  segment: '{product} {country} {nationality}'
+  segment: '{product} made in {country}'
   factors_list:
   - - product
-    - - product|name: Name 1
-        product|text: Text 1
-      - product|name: Name 2
-        product|text: Text 2
+    - - product|name: Car
+        product|text: A sedan
+      - product|name: Laptop
+        product|text: A gaming laptop
   round_type: choice
   choices_shown_in_round: 2
 - key: f0b45e9f-8da7-4ea3-8c18-6a395ec13e29
-  segment: '{brand}'
+  segment: '{nationality} {brand}'
   factors_list:
   - - brand
-    - - brand|name: Name 1
-        brand|text: Text 1
-      - brand|name: Name 2
-        brand|text: Text 2
+    - - brand|name: Huawei
+        brand|text: Huawei
+      - brand|name: Samsung
+        brand|text: Samsung
+      - brand|name: Apple
+        brand|text: Apple
   round_type: ranking
 - key: d680056e-9171-422d-9178-25092d8c406a
-  segment: '{product} {brand} {country}'
+  segment: '{product} by {brand} made in {country}'
   factors_list:
   - - product
-    - - product|name: Name 1
-        product|text: Text 1
-      - product|name: Name 2
-        product|text: Text 2
-      - product|name: Name 3
-        product|text: Text 3
+    - - product|name: car
+        product|text: A car
+      - product|name: laptop
+        product|text: A laptop
+      - product|name: bicycle
+        product|text: A bicycle
   - - brand
-    - - brand|name: Name 1
-        brand|text: Text 1
-      - brand|name: Name 2
+    - - brand|name: acme
+        brand|text: ACME
+      - brand|name: xyz
         brand|text: Text 2
   round_type: scales
 block_variables:
@@ -52,9 +54,9 @@ block_variables:
     - nationality|name: american
       nationality|text: American
       nationality|group_id: us
-k: 1
+k: 2
 test: true
-sleep_amount: 0.05
+sleep_amount: 0.01
 models_to_test:
 - anthropic-claude-3-5-haiku-20241022
 randomize: true

@@ -1328,9 +1328,14 @@ def show_sample_scales(current_round, round_counter):
         
     # st.write('current_round_combo', current_round_combo)
     formatted_text, factors_display = get_llm_text_mixed_scales(current_round_combo, current_round) 
-    st.write(f'### Factor Combination: ')
-    st.write(f'{factors_display}')
-    st.write('---')
+    if factors_display:
+        st.write(f'### Factor Combination: ')
+        st.write(f'{factors_display}')
+        st.write('---')
+    else:
+        st.write('No **Factor** or **Block Variable** in Segment')
+        st.write('---')
+        
     st.write('### LLM Text')
     st.write(formatted_text)
     st.write('---')

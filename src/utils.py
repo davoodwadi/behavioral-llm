@@ -145,18 +145,21 @@ def get_llm_text_mixed_choice(choice_combination, current_round):
 
 
 def get_llm_text_mixed_scales(factor_product, current_round):
-    if not factor_product:
-        return '', []
+    # st.write(factor_product, current_round)
+    # if not factor_product:
+    #     return '', []
     
     # st.write('factor_product', factor_product)
     
     round_segment_variables = get_segment_text_from_segments_list(current_round)
+    # st.write(round_segment_variables)
     
     filtered_factors_list = []
     filtered_factors_names = []
     fp_level_display = dict()
     fp_level = dict()
     for fp in factor_product:
+        # does not run for empty factor product: no factor or block in segment 
         # st.write('fp', fp)
         fp_name = [k.split('|')[0] for k,v in fp.items()][0]
         fp_level.update({fp_name: fp[f'{fp_name}|text']})
@@ -171,6 +174,8 @@ def get_llm_text_mixed_scales(factor_product, current_round):
     # st.write('fp_level', fp_level)
     # st.write('fp_level_display', fp_level_display)
     
+    # st.write(current_round['segment'])
+    # st.write(fp_level_display)
     text_for_llm_sample_list = []
     final_text = current_round['segment'].format(**fp_level)
     text_for_llm_sample_list.append(final_text)
