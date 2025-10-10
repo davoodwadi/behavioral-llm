@@ -1494,156 +1494,163 @@ def render_mixed_experiment(selected_config_path):
 
 
 def run_analysis(df):
-    with st.expander('# Analysis', expanded=False):
-        # st.write('')
-        st.write(df.iloc[:3].to_csv())
+    # with st.expander('# Analysis', expanded=False):
+        st.write('# Analysis')
+        # st.write(df.iloc[:3].to_csv())
         
         rounds_info = parse_round_info(df.columns)
         if not rounds_info:
             st.error("Could not find any columns matching the 'round<N>_<type>_<name>' pattern.")
             return
 
-        st.write('rounds_info', rounds_info)
         # Sort rounds by number to ensure chronological order
-        for round_num in sorted(rounds_info.keys()):
-            info = rounds_info[round_num]
-            # st.write('info', info)
-            round_type = info.get('type', 'unknown')
-            round_type_clean = 'scales' if 'scales' in round_type.lower() else 'ranking' if 'ranking' in round_type.lower() else 'choice' if 'choice' in round_type.lower() else None
-            factor_col = info.get('factor_col')
-            response_col = info.get('response_col')
+        for round_num, columns in rounds_info.items():
+            # st.write(round_num, columns)
+            one_column = columns[0]
+            round_type = one_column.split('_')[1]
+            # st.write(round_type)
 
-            with st.expander(f"### Round {round_num+1}: {round_type_clean.capitalize()}", expanded=True):
-                if not factor_col or not response_col:
-                    st.warning(f"Skipping Round {round_num}. Missing factor or response column in data.")
-                    continue
-
+            with st.expander(f"### Round {round_num+1}: {round_type.capitalize()}", expanded=True):
+                
                 # Filter out rows where the necessary columns for this round are NaN
                 # This is important because not all rows have data for all rounds
-                round_df = df[['model_name', factor_col, response_col]].dropna()
-                # st.dataframe(round_df)
+                round_df = df[['model_name', 'iteration', *columns]].dropna()
                 if round_df.empty:
                     st.info(f"No data available for Round {round_num}.")
                     continue
 
                 # Dispatch to the correct analysis function based on type
-                # if round_type_clean == 'scales':
-                #     analyze_scales(round_df, 'model_name', factor_col, response_col)
-                # elif round_type_clean == 'choice':
-                #     analyze_choice(round_df, 'model_name', factor_col, response_col)
-                # elif round_type_clean == 'ranking':
-                #     st.write('factor_col', factor_col)
-                #     analyze_ranking(round_df, 'model_name', factor_col, response_col)
+                if round_type == 'scales':
+                    analyze_scales(round_df, columns, round_num)
+                elif round_type == 'choice':
+                    analyze_choice(round_df, columns, round_num)
+                elif round_type == 'ranking':
+                    analyze_ranking(round_df, columns, round_num)
 
 
-def analyze_scales(df, model_col, factor_col, response_col):
+def analyze_scales(df, columns, round_num):
     """Analyzes Likert scale data by calculating mean and std dev."""
-    st.markdown(f"Grouping by `{model_col}` and `{factor_col}`. Aggregating `{response_col}`.")
+    model_col = 'model_name'
     
-    analysis_df = df.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
-    analysis_df = analysis_df.round(2)
+    factor_cols = []
+    for c in columns:
+        if '_llm_response' in c: 
+            response_col = c
+            continue
+        elif 'llm_raw' in c:
+            continue        
+        # parts = c.split('_')
+        
+        # st.write('parts', parts)
+        # factor_name = parts[2]
+    
+        factor_cols.append(c)
+    
+    st.markdown(f"Grouping by `{model_col}` and `{factor_cols}`. Aggregating `{response_col}`.")
+    
 
-    st.dataframe(analysis_df)
+    for factor_col in factor_cols:
+        analysis_df = df.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
+        analysis_df = analysis_df.round(2)
+        st.dataframe(analysis_df)
 
-    fig = px.bar(
-        analysis_df,
-        x=factor_col,
-        y='mean',
-        color=model_col,
-        barmode='group',
-        error_y='std',
-        title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
-        labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
-    )
-    plotly_config = dict(
-        width='stretch'
-    )
-    st.plotly_chart(fig, config=plotly_config)
+        fig = px.bar(
+            analysis_df,
+            x=factor_col,
+            y='mean',
+            color=model_col,
+            barmode='group',
+            error_y='std',
+            title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
+            labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
+        )
+        plotly_config = dict(
+            width='stretch'
+        )
+        st.plotly_chart(fig, config=plotly_config)
 
-def analyze_choice(df, model_col, factor_col, response_col):
+def analyze_choice(df, columns, round_num):
     """Analyzes categorical choice data by counting occurrences."""
-    st.markdown(f"Counting `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
+    model_col = 'model_name'
+    
+    split_columns = []
+    factor_cols = []
+    for c in columns:
+        if '_llm_response' in c: 
+            response_col = c
+        
+        parts = c.split('_')
+        factor_index = parts[2]
+        try:
+            int(factor_index)
+        except:
+            continue
+        factor_name = parts[3]
+    
+        split_columns.append((factor_index, factor_name))
+        factor_cols.append(c)
+        
+    # st.write('split_columns', split_columns)
+    # st.write('factor_cols', factor_cols)
+    st.markdown(f"Counting `{response_col}` grouped by `{model_col}` and `{factor_cols}`.")
 
-    analysis_df = df.groupby([model_col, factor_col, response_col]).size().reset_index(name='count')
+    analysis_df = df.groupby([model_col, *factor_cols, response_col]).size().reset_index(name='count')
     
     st.dataframe(analysis_df)
 
-    fig = px.bar(
-        analysis_df,
-        x=factor_col,
-        y='count',
-        color=response_col,
-        facet_col=model_col, # Creates separate charts for each model
-        title=f"Choice Counts by {factor_col.split('_')[-1].title()} per Model",
-        labels={'count': 'Count', factor_col: factor_col.split('_')[-1].title()}
-    )
-    plotly_config = dict(
-        width='stretch'
-    )
-    st.plotly_chart(fig, config=plotly_config)
+    # fig = px.bar(
+    #     analysis_df,
+    #     x=factor_col,
+    #     y='count',
+    #     color=response_col,
+    #     facet_col=model_col, # Creates separate charts for each model
+    #     title=f"Choice Counts by {factor_col.split('_')[-1].title()} per Model",
+    #     labels={'count': 'Count', factor_col: factor_col.split('_')[-1].title()}
+    # )
+    # plotly_config = dict(
+    #     width='stretch'
+    # )
+    # st.plotly_chart(fig, config=plotly_config)
 
-def analyze_ranking(df, model_col, factor_col, response_col):
+def analyze_ranking(df, columns, round_num):
     """Analyzes ranking data by calculating mean rank."""
-    st.markdown(f"Analyzing mean rank of `{response_col}` grouped by `{model_col}` and `{factor_col}`.")
+    model_col = 'model_name'
     
-    # This analysis is identical to 'scales', so we can reuse the function
-    analyze_scales(df, model_col, factor_col, response_col)
+    split_columns = []
+    factor_cols = []
+    for c in columns:
+        if '_llm_response' in c: 
+            response_col = c
+        
+        parts = c.split('_')
+        # st.write('parts', parts)
+        factor_index = parts[2]
+        try:
+            int(factor_index)
+        except:
+            continue
+        factor_name = parts[3]
+    
+        split_columns.append((factor_index, factor_name))
+        factor_cols.append(c)
+    
+    
+    st.markdown(f"Analyzing mean rank of `{response_col}` grouped by `{model_col}` and `{factor_cols}`.")
+    
+    
       
 
 def parse_round_info(columns):
-    rounds_info = {}
-    
-    for col in columns:
-        if not 'round' in col:
-            continue
-        parts = col.split('_')
-        (round_num_segment, *rest) = parts
-        assert 'round' in round_num_segment
-        round_num_list = re.findall(r'\d+', round_num_segment)
-        assert round_num_list
-        round_num = int(round_num_list[0])
-        
-        if not rounds_info.get(round_num):
-            rounds_info[round_num] = dict()
-        
-        (round_type, *others) = rest
-        
-        rounds_info[round_num]['type'] = round_type
-        
-        if '_llm_response' in col:
-            st.write(col)
-            rounds_info[round_num]['response_col'] = col
+    rounds_info = defaultdict(list)
+    filtered_columns = [col for col in columns if 'round' in col.lower()]
+    filtered_columns_round_number = [fc.split('_')[0] for fc in filtered_columns]
+    filtered_columns_number = [int(re.findall(r'\d+', fc)[0]) for fc in filtered_columns_round_number]
+    # total_rounds = max(filtered_columns_number) + 1
+    for number, column in zip(filtered_columns_number, filtered_columns):
+        rounds_info[number].append(column)
             
-        if round_type=='choice':
-            choice_items = rounds_info[round_num].get('choice_items')
-            if not choice_items:
-                rounds_info[round_num]['choice_items'] = dict()
-            try:
-                choice_number = int(others[0])
-                # rounds_info[round_num]['choice_number'] = choice_number
-                
-                choice_factor = (others[1])
-                # rounds_info[round_num]['choice_factors'].append(choice_factor)
-                
-                rounds_info[round_num]['choice_items'][choice_number] = choice_factor
-                
-                # choice_number_item = rounds_info[round_num].get(choice_number)
-                # if not choice_number_item:
-                #     rounds_info[round_num][choice_number] = [choice_factor]
-                # else:
-                #     rounds_info[round_num][choice_number].append(choice_factor)
-                
-
-                
-            except Exception as e:
-                # st.write(e)
-                pass
-            
-        # st.write('others', others)
-        # st.write('---')
-        
     return rounds_info
-
+    
 
  
 def main():
