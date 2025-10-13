@@ -156,6 +156,23 @@ class DeepInfraModel(OpenAIModel):
             base_url="https://api.deepinfra.com/v1/openai",
         )
         # The query() method from OpenAIModel is inherited and works perfectly.
+        
+
+class AlibabaCloudModel(OpenAIModel):
+    """
+    Wrapper for models on AlibabaCloud, which uses an OpenAI-compatible API.
+    This demonstrates extending by inheritance for API-compatible services.
+    """
+    def __init__(self, model_name: str, api_key):
+        # We don't call super().__init__() of OpenAIModel directly
+        LLM.__init__(self, model_name) 
+        final_api_key = api_key if api_key else os.environ.get("DASHSCOPE_API_KEY", '')
+        
+        self.client = OpenAI(
+            api_key=final_api_key,
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        )
+
 class TestModel(LLM):
     """Wrapper for OpenAI's chat models."""
     def __init__(self, model_name: str, api_key):
@@ -205,6 +222,7 @@ MODEL_REGISTRY = {
     "anthropic": AnthropicModel,
     "google": GeminiModel,
     "deepinfra": DeepInfraModel,
+    'alibabacloud':AlibabaCloudModel,
     'test': TestModel
 }
 

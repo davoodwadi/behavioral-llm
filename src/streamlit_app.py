@@ -24,10 +24,8 @@ import re
 import time
 from datetime import datetime
 
-from experiment_choice import StExperimentRunnerChoice, StExperimentRunnerRanking, StExperimentRunnerScales
-from experiment_runners import StExperimentRunnerMixed
 import itertools
-from utils import get_llm_text_choice, get_llm_text_rank, get_llm_text_scales, get_llm_text_mixed_rank, get_llm_text_mixed_choice, get_llm_text_mixed_scales
+from utils import get_llm_text_mixed_rank, get_llm_text_mixed_choice, get_llm_text_mixed_scales
 from models import get_model, LLMResponse
 
 class NoAliasDumper(yaml.Dumper):
@@ -50,6 +48,9 @@ is_prod = (APP_ENVIRONMENT == 'production')
 if 'is_running' not in st.session_state:
     st.session_state.is_running = False
 
+if 'last_uploaded_file' not in st.session_state:
+    st.session_state.last_uploaded_file = None
+
 # Get the path to the 'config' directory (assuming it's relative to the app file)
 APP_FILE = Path(__file__)
 APP_DIR = APP_FILE.parent
@@ -63,10 +64,15 @@ ALL_MODELS = [
     "google-gemini-2.5-flash",
     "google-gemini-2.5-pro",
     "deepinfra-Qwen/Qwen3-Next-80B-A3B-Instruct",
+    "deepinfra-deepseek-ai/DeepSeek-V3.2-Exp",
     "deepinfra-deepseek-ai/DeepSeek-V3.1-Terminus",
+    "deepinfra-zai-org/GLM-4.6",
     "deepinfra-meta-llama/Llama-4-Scout-17B-16E-Instruct",
     "deepinfra-meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
     "deepinfra-moonshotai/Kimi-K2-Instruct-0905",
+    "alibabacloud-qwen3-max",
+    "alibabacloud-qwen-plus",
+    "alibabacloud-qwen-flash",
 ]
 if not is_prod:
     ALL_MODELS.append('test-test')
@@ -432,12 +438,13 @@ def show_mixed_segments(current_round, round_counter):
         #     st.warning(f"**Missing or incorrectly formatted factors:** {missing_factors_formatted}")
     # st.write("current_round['segment']", current_round['segment'])
 
-@st.cache_data
+# @st.cache_data
 def get_config_to_save(factors_to_save):
     # config = load_experiment_config(st.session_state.selected_config_path)
     config_to_save = dict()
     for factor_to_save in factors_to_save:
         config_to_save[factor_to_save] = st.session_state.get(factor_to_save)
+        # st.write(st.session_state.get(factor_to_save))
     return config_to_save
 
 @st.cache_data
@@ -488,7 +495,15 @@ def show_results(df, selected_config_path):
 
 def show_mixed_experiment_execution(selected_config_path):
     # The 'Start' button is only active when not running.
+    # if st.session_state.get('results'):
+    #     st.write('results size', len(st.session_state.get('results')))
+    # st.write('last_uploaded_file', st.session_state.get('last_uploaded_file'))
+    # st.write('csv_results_uploader', st.session_state.get('csv_results_uploader'))
+    
     if not st.session_state.is_running: 
+        # option to append new results to existing results
+        st.checkbox('Append to existing results', False, key='append_to_results')
+    
         if st.button(
                 "Start LLM Experiment Run", 
                 type="primary", 
@@ -528,7 +543,16 @@ def show_mixed_experiment_execution(selected_config_path):
             st.rerun()
 
     if st.session_state.is_running:
-        st.session_state['results'] = []
+        append_to_results = st.session_state.get('append_to_results')
+        # st.write('append_to_results', append_to_results)
+        
+        if not append_to_results:
+            st.info('Creating New Results Dataset')
+            st.session_state['results'] = []
+        else:
+            # st.write('current results', len(st.session_state['results']))
+            st.info('Appending to Existing Results Dataset')
+            
         run_experiments()
         st.session_state.is_running = False
         st.rerun()
@@ -878,18 +902,18 @@ def run_experiments():
     progress_text = f"Running {total_iterations} experiments..."
     my_bar = st.progress(0, text=progress_text)
     progress_tracker = ProgressTracker(counter=0, progress_bar=my_bar, total_iterations=total_iterations)
-    results = st.session_state['results']
+    # st.write('current results', len(st.session_state['results']))
+    
 
     for model in models_objects_to_test:
         # go through all combinations
         go_through_all_combinations(
             block_added_all_rounds_combinations_deduped, 
             model=model, 
-            results=results,
+            results=st.session_state['results'],
             progress_tracker=progress_tracker,
             )
 
-    return results
 
 def go_through_all_combinations(all_rounds_combinations, model, results, progress_tracker):
     for i, rounds_combination in enumerate(all_rounds_combinations):
@@ -1035,7 +1059,7 @@ def call_model_for_user_message(model, user_message, current_round, history=[]):
             parsed_choice = None
         else:
             try:
-                parsed_choice = json.loads(response_data.content)
+                parsed_choice = json.loads(response_data.content.strip())
             except Exception as e:
                 parsed_choice = e
     return response_data, parsed_choice
@@ -1368,18 +1392,20 @@ def show_experiment_combinations():
 
         # Display the core parameters
         # st.markdown(f"**Combinations:** `{all_combinations_length_display}`")
-        st.markdown(f"**K value:** `{k_value}`")
+        # st.markdown(f"**K value:** `{k_value}`")
 
         # Use a divider to separate parameters from metrics
         st.divider()
 
         # Use columns for a dashboard-like layout of the key metrics
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric(label="Total Models", value=total_models_to_test)
         with col2:
-            st.metric(label="Total Combinations", value=len(block_added_all_rounds_combinations_deduped))
+            st.metric(label="***k*** Value", value=k_value)
         with col3:
+            st.metric(label="Total Combinations", value=len(block_added_all_rounds_combinations_deduped))
+        with col4:
             st.metric(label="Total Iterations", value=total_iterations)
 
 def show_round_container():
@@ -1499,8 +1525,8 @@ def render_mixed_experiment(selected_config_path):
 
 
 def run_analysis(df):
-    # with st.expander('# Analysis', expanded=False):
-        st.write('# Analysis')
+    with st.expander('# Analysis', expanded=False):
+        # st.write('# Analysis')
         # st.write(df.iloc[:3].to_csv())
         
         rounds_info = parse_round_info(df.columns)
@@ -1531,12 +1557,135 @@ def run_analysis(df):
                     analyze_choice(round_df, columns, round_num)
                 elif round_type == 'ranking':
                     analyze_ranking(round_df, columns, round_num)
+    
+    if not is_prod:
+        with st.expander('# CETSCALE', expanded=False):
+            analyze_CET(df)
+
+model_to_country = {
+    "gemini-2.5-flash-lite":'American',
+    "gpt-4.1-nano": 'American',
+    "meta-llama/Llama-4-Scout-17B-16E-Instruct": 'American',
+    "deepseek-ai/DeepSeek-V3.2-Exp": 'Chinese',
+    "zai-org/GLM-4.6": 'Chinese',
+    "Qwen/Qwen3-Next-80B-A3B-Instruct": 'Chinese'
+}
+
+def analyze_CET(df):
+    
+    rounds_info = parse_round_info(df.columns)
+    # st.write(rounds_info)
+    # columns = [cols for round_counter, cols in rounds_info.items()]
+    
+    # st.write(columns)
+    
+    model_col = 'model_name'
+    factor_cols = []
+    response_cols = []
+    for c in df.columns:
+        if '_llm_response' in c: 
+            response_cols.append(c)
+            
+            continue
+        elif 'llm_raw' in c:
+            continue        
+    
+        factor_cols.append(c)
+        
+    st.write(f'before dropna:', df.shape[0])
+    analysis_df_source = df.copy()
+    # st.write(response_cols)
+    for response_col in response_cols:
+        analysis_df_source[response_col] = pd.to_numeric(analysis_df_source[response_col], errors='coerce')
+        analysis_df_source.dropna(subset=[response_col], inplace=True)
+        
+    st.write(f'after dropna:', analysis_df_source.shape[0])
+    
+    analysis_df_source['CETSCORE'] = analysis_df_source[response_cols].sum(1)
+    # st.write(analysis_df_source[model_col].unique().tolist())
+    block_var = 'round0_scales_nationality'
+    
+    res = analysis_df_source[[model_col, block_var, 'CETSCORE']]
+    res['model_country'] = res[model_col].map(model_to_country)
+
+    # model_name
+    res_group = res.groupby([model_col, block_var])['CETSCORE'].agg(['mean', 'std']).reset_index()
+    res_group = res_group.round(2)
+    st.dataframe(res_group)
+    
+
+    fig = px.bar(
+        res_group,
+        x='model_name',
+        y='mean',
+        color=block_var,
+        barmode='group',
+        error_y='std',
+        title=f"Mean Score by Model",
+        labels={'mean': 'Mean Score (with Std Dev)'}
+    )
+    plotly_config = dict(
+        width='stretch'
+    )
+    st.plotly_chart(fig, config=plotly_config)
+    # 
+    
+    # model country
+    'No ''meta-llama/Llama-4-Scout-17B-16E-Instruct'
+    res_group_country = res[res['model_name']!='meta-llama/Llama-4-Scout-17B-16E-Instruct']
+    # st.dataframe(res_group_country)
+    res_group_country = res.groupby(['model_country', block_var])['CETSCORE'].agg(['mean', 'std']).reset_index()
+    res_group_country = res_group_country.round(2)
+    st.dataframe(res_group_country)
+    
+    fig = px.bar(
+        res_group_country,
+        x='model_country',
+        y='mean',
+        color=block_var,
+        barmode='group',
+        error_y='std',
+        title=f"Mean Score by Model",
+        labels={'mean': 'Mean Score (with Std Dev)'}
+    )
+    plotly_config = dict(
+        width='stretch'
+    )
+    st.plotly_chart(fig, config=plotly_config)
+    #  
+    
+    res_group_text_list = []
+    for i, row in res_group.iterrows():
+        t = f"{model_to_country[row[model_col]]} Model, {row[model_col]}, {row[block_var].capitalize()} M = {row['mean']}, SD = {row['std']}"
+        res_group_text_list.append(t)
+                
+    res_group_text = '\n\n'.join(res_group_text_list)   
+    st.markdown(f'''
+Shimp and Sharma (1987, p. 282) 
+show CETSCALE for the four geographic areas as 
+
+Detroit M = 68.58, SD = 25.96; 
+
+Carolinas M = 61.28, SD = 24.41; 
+
+Denver = 57.84, SD = 26.10;
+ 
+Los Angeles M = 56.62, SD = 26.37.
+
+For our models,
+we show CETSCALE for each model as follows,
+
+{res_group_text}
+
+
+`Shimp, T. A., & Sharma, S. (1987). Consumer ethnocentrism: Construction and validation of the CETSCALE. Journal of marketing research, 24(3), 280-289.`
+''')
 
 
 def analyze_scales(df, columns, round_num):
     """Analyzes Likert scale data by calculating mean and std dev."""
     model_col = 'model_name'
-    
+
     factor_cols = []
     for c in columns:
         if '_llm_response' in c: 
@@ -1544,22 +1693,51 @@ def analyze_scales(df, columns, round_num):
             continue
         elif 'llm_raw' in c:
             continue        
-        # parts = c.split('_')
-        
-        # st.write('parts', parts)
-        # factor_name = parts[2]
     
         factor_cols.append(c)
     
-    st.markdown(f"Grouping by `{model_col}` and `{factor_cols}`. Aggregating `{response_col}`.")
-    
+        
+    if factor_cols:
+        st.markdown(f"Grouping by `{model_col}` and `{factor_cols}`. Aggregating `{response_col}`.")
+    else:
+        st.markdown(f"Grouping by `{model_col}`. Aggregating `{response_col}`.")
+        st.caption('*No Factors in this Round.*')
 
-    for factor_col in factor_cols:
-        analysis_df = df.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
+    analysis_df_source = df.copy()
+    analysis_df_source[response_col] = pd.to_numeric(analysis_df_source[response_col], errors='coerce')
+    analysis_df_source.dropna(subset=[response_col], inplace=True)
+    
+        
+    # no factor in this scales round
+    if not factor_cols:
+
+        analysis_df = analysis_df_source.groupby([model_col])[response_col].agg(['mean', 'std']).reset_index()
         analysis_df = analysis_df.round(2)
         st.dataframe(analysis_df)
 
         fig = px.bar(
+            analysis_df,
+            x=model_col,
+            y='mean',
+            # color=model_col,
+            # barmode='group',
+            error_y='std',
+            title=f"Mean Score by Model",
+            labels={'mean': 'Mean Score (with Std Dev)'}
+        )
+        plotly_config = dict(
+            width='stretch'
+        )
+        st.plotly_chart(fig, config=plotly_config)
+        return 
+    
+    for factor_col in factor_cols:
+    
+        analysis_df = analysis_df_source.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
+        analysis_df = analysis_df.round(2)
+        st.dataframe(analysis_df)
+
+        fig1 = px.bar(
             analysis_df,
             x=factor_col,
             y='mean',
@@ -1572,7 +1750,19 @@ def analyze_scales(df, columns, round_num):
         plotly_config = dict(
             width='stretch'
         )
-        st.plotly_chart(fig, config=plotly_config)
+        st.plotly_chart(fig1, config=plotly_config)
+        
+        fig2 = px.bar(
+            analysis_df,
+            x=model_col,
+            y='mean',
+            color=factor_col,
+            barmode='group',
+            error_y='std',
+            title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
+            labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
+        )
+        st.plotly_chart(fig2, config=plotly_config)
 
 def analyze_choice(df, columns, round_num):
     """Analyzes categorical choice data by counting occurrences."""
@@ -1643,7 +1833,6 @@ def analyze_ranking(df, columns, round_num):
     st.markdown(f"Analyzing mean rank of `{response_col}` grouped by `{model_col}` and `{factor_cols}`.")
     
     
-      
 
 def parse_round_info(columns):
     rounds_info = defaultdict(list)
@@ -1694,13 +1883,6 @@ def show_toast():
         st.toast(st.session_state.get('toast_text'))
         st.session_state.show_toast = False
 
-@dataclass
-class ProgressTracker:
-    """Standardized response object for all LLM queries."""
-    counter: int
-    progress_bar: Any
-    total_iterations: int
-
 
 def show_download_save_config(config_to_save, selected_config_path):
     if not is_prod:
@@ -1738,28 +1920,45 @@ def stop_run_callback():
     st.session_state.stop_requested = True
     # st.toast("Experiment interruption requested. Waiting for current iteration to finish.")
  
+ 
 def process_uploaded_results_csv():
     # Get the uploaded file from session state using the key.
     uploaded_file = st.session_state.csv_results_uploader
-    
-    if uploaded_file is not None:
+    if uploaded_file is not None and uploaded_file!= st.session_state.get('last_uploaded_file'):
+        # print('**'*10)
+        # print('**'*10)
+        # print('new file detected... processing')
+        # print('**'*10)
+        # print('**'*10)
         try:
             # To read the file as a string
             stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-            # string_data = stringio.read()
             csv_df = pd.read_csv(stringio)
             csv_dict = csv_df.to_dict(orient='records')
-            # st.write('csv_dict', csv_dict)
+            
+            # This is the primary action: update the results
             st.session_state.results = csv_dict
-            # return csv_data
-            # store the config in state for reset_config
-            # st.session_state['csv_dict'] = csv_dict
+            
+            st.session_state.last_uploaded_file = uploaded_file
 
-            st.success(f"Successfully loaded configuration from '{uploaded_file.name}'!")
+            # st.success(f"Successfully loaded results from '{uploaded_file.name}'!")
         
         except Exception as e:
             st.error(f"Error processing CSV file: {e}")
+            # Optional: Clear the tracker on error so the user can try uploading the same file again
+            st.session_state.last_uploaded_file = None
+    
+print('')
 
+
+
+
+@dataclass
+class ProgressTracker:
+    """Standardized response object for all LLM queries."""
+    counter: int
+    progress_bar: Any
+    total_iterations: int
 
 
 
