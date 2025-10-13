@@ -499,10 +499,17 @@ def show_mixed_experiment_execution(selected_config_path):
     #     st.write('results size', len(st.session_state.get('results')))
     # st.write('last_uploaded_file', st.session_state.get('last_uploaded_file'))
     # st.write('csv_results_uploader', st.session_state.get('csv_results_uploader'))
+    col1, col2 = st.columns(2)
+    with col1:
+        st.checkbox('Append to existing results', False, key='append_to_results')
+    with col2:
+        if st.button('Reset Results', key='reset_results_button'):
+            st.session_state.show_toast = True
+            st.session_state.toast_text = 'Results Have Been Reset'
+            st.session_state.results = []
     
     if not st.session_state.is_running: 
         # option to append new results to existing results
-        st.checkbox('Append to existing results', False, key='append_to_results')
     
         if st.button(
                 "Start LLM Experiment Run", 
@@ -1627,7 +1634,7 @@ def analyze_CET(df):
     plotly_config = dict(
         width='stretch'
     )
-    st.plotly_chart(fig, config=plotly_config)
+    st.plotly_chart(fig, config=plotly_config, key='plotly_model_name_mean')
     # 
     
     # model country
@@ -1651,7 +1658,7 @@ def analyze_CET(df):
     plotly_config = dict(
         width='stretch'
     )
-    st.plotly_chart(fig, config=plotly_config)
+    st.plotly_chart(fig, config=plotly_config, key='plotly_model_country_mean')
     #  
     
     res_group_text_list = []
@@ -1750,7 +1757,7 @@ def analyze_scales(df, columns, round_num):
         plotly_config = dict(
             width='stretch'
         )
-        st.plotly_chart(fig1, config=plotly_config)
+        st.plotly_chart(fig1, config=plotly_config, key=f'plotly_model_country_mean_{factor_col}_1')
         
         fig2 = px.bar(
             analysis_df,
@@ -1762,7 +1769,7 @@ def analyze_scales(df, columns, round_num):
             title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
             labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
         )
-        st.plotly_chart(fig2, config=plotly_config)
+        st.plotly_chart(fig2, config=plotly_config, key=f'plotly_model_country_mean_{factor_col}_2')
 
 def analyze_choice(df, columns, round_num):
     """Analyzes categorical choice data by counting occurrences."""
