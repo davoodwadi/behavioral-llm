@@ -1,69 +1,61 @@
-system_prompt: You are a consumer in a market research study. Your task is to provide
-  answers to the questions given. Please respond with ONLY the digit of the response.
-  Do not provide any other text, explanation, or punctuation.
+system_prompt: You are a consumer in a market research study. Your task is to rank
+  the options given. Please respond with ONLY the array of the rankings (most preferred
+  to least preferred). Do not provide any other text, explanation, or punctuation.
 rounds:
-- key: cc9c9d09-8456-4894-880e-c72c1ca54c8a
-  segment: '{product} made in {country}'
+- key: 987f3daa-14e0-4743-937d-7bd6c0518440
+  segments:
+  - segment_text: 'sdfsdf {bar}
+
+      {bvar}'
+    segment_id: 5913f3cd-dcf2-4923-8088-c336348708b8
   factors_list:
-  - - product
-    - - product|name: Car
-        product|text: A sedan
-      - product|name: Laptop
-        product|text: A gaming laptop
+  - - scales factor1
+    - - name: Name 1
+        text: Text 1
+        factor_name: scales factor1
+      - name: Name 2
+        text: Text 2
+        factor_name: scales factor1
+  - - scales factor 2
+    - - name: Name 1
+        text: Text 1
+        factor_name: scales factor 2
+      - name: Name 2
+        text: Text 2
+        factor_name: scales factor 2
+  round_type: scales
+- key: db424c0e-1148-4ec9-8ce0-5d9794247e0a
+  segments:
+  - segment_text: 'sdfsdf {bar}
+
+      {bvar}'
+    segment_id: da482dc4-15d9-454e-84eb-1535b4a07365
+  - segment_text: gdfgdfg
+    segment_id: 6611efc1-ee6d-4946-995a-cab61d423b68
+  factors_list: []
   round_type: choice
   choices_shown_in_round: 2
-- key: f0b45e9f-8da7-4ea3-8c18-6a395ec13e29
-  segment: '{nationality} {brand}'
-  factors_list:
-  - - brand
-    - - brand|name: Huawei
-        brand|text: Huawei
-      - brand|name: Samsung
-        brand|text: Samsung
-      - brand|name: Apple
-        brand|text: Apple
-  round_type: ranking
-- key: d680056e-9171-422d-9178-25092d8c406a
-  segment: '{product} by {brand} made in {country}'
-  factors_list:
-  - - product
-    - - product|name: car
-        product|text: A car
-      - product|name: laptop
-        product|text: A laptop
-      - product|name: bicycle
-        product|text: A bicycle
-  - - brand
-    - - brand|name: acme
-        brand|text: ACME
-      - brand|name: xyz
-        brand|text: Text 2
-  round_type: scales
 block_variables:
-- - country
-  - - country|name: america
-      country|text: America
-      country|group_id: us
-    - country|name: china
-      country|text: China
-      country|group_id: china
-- - nationality
-  - - nationality|name: chinese
-      nationality|text: chinese
-      nationality|group_id: china
-    - nationality|name: american
-      nationality|text: American
-      nationality|group_id: us
-k: 2
+- - bvar
+  - - name: Name 1
+      text: bvar text 1
+      group_id: us
+      factor_name: bvar
+    - name: Name 2
+      text: bvar text 2
+      group_id: china
+      factor_name: bvar
+k: 1
 test: true
 sleep_amount: 0.01
 models_to_test:
-- anthropic-claude-3-5-haiku-20241022
-randomize: true
+- deepinfra-Qwen/Qwen3-Next-80B-A3B-Instruct
+randomize: false
 paper_url: https://doi.org/10.1177/002224378702400304
 api_keys:
   openai: null
   anthropic: null
   google: null
   deepinfra: null
+  alibabacloud: null
   test: null

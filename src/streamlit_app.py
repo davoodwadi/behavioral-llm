@@ -1,6 +1,6 @@
 import streamlit as st
 
-# from streamlit_profiler import Profiler
+from streamlit_profiler import Profiler
 
 import pandas as pd
 import plotly.express as px
@@ -25,7 +25,7 @@ import time
 from datetime import datetime
 
 import itertools
-from utils import get_llm_text_mixed_rank, get_llm_text_mixed_choice, get_llm_text_mixed_scales
+from utils import get_llm_text_mixed_rank, get_llm_text_mixed_choice, get_llm_text_mixed_scales, get_segment_text_from_segments_list, SafeFormatter
 from models import get_model, LLMResponse
 
 class NoAliasDumper(yaml.Dumper):
@@ -111,8 +111,8 @@ if 'stop_requested' not in st.session_state:
     st.session_state.stop_requested = False
 if 'results' not in st.session_state:
     st.session_state.results = []
-if 'thread' not in st.session_state:
-    st.session_state.thread = None
+# if 'thread' not in st.session_state:
+#     st.session_state.thread = None
 
 config_paths = {
     'choice': 'config/choice/COO/country of origin choice.yaml',
@@ -256,18 +256,21 @@ def show_add_block_variable_dialog():
         'Level Text for LLM': ["Text 1", "Text 2"],
         'Group ID': ["", ""],
     })
-    new_factor_name = st.text_input('New Block Variable Name', key=f'new_block_variable_name_text_input')
+    new_factor_name = st.text_input('New Block Variable Name', key='new_block_variable_name_text_input')
     edited_df = st.data_editor(
     df, 
     num_rows="dynamic",
-    key=f'data_editor_block_variable'
+    key='data_editor_block_variable'
     )
     new_factor_names_levels = edited_df['Level Name'].values.tolist()
     new_factor_text_levels = edited_df['Level Text for LLM'].values.tolist()
     new_factor_group_id = edited_df['Group ID'].values.tolist()
     # st.write(new_factor_group_id)
-    new_fact = [new_factor_name, [{f'{new_factor_name}|name':nf_name, f'{new_factor_name}|text':nf_text, f'{new_factor_name}|group_id':nf_group_id} for nf_name, nf_text, nf_group_id in zip(new_factor_names_levels, new_factor_text_levels, new_factor_group_id)]]
-    if st.button("Add Block Variable", key=f'add_button_block_variable'):
+    new_fact = [
+        new_factor_name, 
+        [{'name':nf_name, 'text':nf_text, 'group_id':nf_group_id, 'factor_name': new_factor_name} for nf_name, nf_text, nf_group_id in zip(new_factor_names_levels, new_factor_text_levels, new_factor_group_id)]
+    ]
+    if st.button("Add Block Variable", key='add_button_block_variable'):
         st.session_state['block_variables'].append(new_fact)
 
         st.session_state.show_toast = True
@@ -279,7 +282,6 @@ def remove_block_variable(variable_name):
     if st.session_state.get('block_variables'):
         st.session_state['block_variables'] = [bvar for bvar in st.session_state['block_variables'] if bvar[0]!=variable_name]
         st.toast(f'Block Variable: {variable_name} Removed.' )
-    # st.rerun()
 
 def show_block_variables():
     with st.expander('Block Variables (optional)'):
@@ -287,8 +289,7 @@ def show_block_variables():
         if st.session_state.get('block_variables'):
             for factor_tuple in (st.session_state['block_variables']):
                 factor_name = factor_tuple[0] # product
-                factor_levels = factor_tuple[1] # [{product|name:'Name 1', product|text:'Text 1'},{product|name:'Name 2', product|text:'Text 2'}]
-                # st.write('something')
+                factor_levels = factor_tuple[1] # [{name:'Name 1', text:'Text 1', factor_name:'product'},{product|name:'Name 2', product|text:'Text 2'}]
                 col_factor, col_remove = st.columns([2,1])
                 with col_factor:
                     st.write(f'***{factor_name}***')
@@ -297,14 +298,8 @@ def show_block_variables():
                         remove_block_variable(factor_name)
                         st.rerun()
                 
-                factor_levels_display = []
-                for level_dict in factor_levels:
-                    clean_dict = {k.split('|')[1]: v for k, v in level_dict.items()}
-                    # st.write(clean_dict)
-                    factor_levels_display.append(clean_dict)
-
-                original_df = pd.DataFrame(factor_levels_display)
-                # st.dataframe(original_df)
+                original_df = pd.DataFrame(factor_levels)
+                # st.write(factor_levels)
                 
                 editor_key = f"data_editor_block_variables_{factor_name}"
 
@@ -328,7 +323,7 @@ def show_block_variables():
             st.session_state.block_variables = []
             st.info('No Block Variables. You can optionally add them here.')
 
-        if st.button(f'Add Block Variable'):
+        if st.button('Add Block Variable'):
             show_add_block_variable_dialog()
 
 def apply_editor_changes_and_update_state(factor_name, editor_key, original_df, state_list_to_update, has_group_id=False):
@@ -377,11 +372,11 @@ def apply_editor_changes_and_update_state(factor_name, editor_key, original_df, 
     
     if has_group_id:
         formatted_levels = [
-            {f"{factor_name}|name": level.get('name', ''), f"{factor_name}|text": level.get('text', ''), f"{factor_name}|group_id": level.get('group_id', '')} for level in final_records
+            {"name": level.get('name', ''), "text": level.get('text', ''), "group_id": level.get('group_id', ''), 'factor_name': factor_name} for level in final_records
         ]
     else:
         formatted_levels = [
-            {f"{factor_name}|name": level.get('name', ''), f"{factor_name}|text": level.get('text', '')}
+            {"name": level.get('name', ''), "text": level.get('text', ''), 'factor_name': factor_name}
             for level in final_records
         ]
         
@@ -395,11 +390,18 @@ def apply_editor_changes_and_update_state(factor_name, editor_key, original_df, 
         st.error(f"Could not find factor '{factor_name}' to update.")
 
 
-    st.rerun()
-
 def show_mixed_segments(current_round, round_counter):
-    st.info('Use `{factor_name}` to add placeholders for factors\n\nExample: {product} or {price}')
+    factor_info = 'Use `{factor_name}` to add placeholders for factors\n\nExample: {product} or {price}\n\n'
+    round_type = current_round['round_type']
+    # if current_round['round_type'] == 'ranking':
+    #         factor_info+='Wrap the ranking segment within `---`. This would repeat this chunk for every rank permutation.\n\n'
+    #         factor_info+='Example: Instructions --- {factor_name} --- Final instructions.'
+    # if current_round['round_type'] == 'choice':
+    #         factor_info+='Wrap the choice segment within `---`. This would repeat this chunk for every choice permutation.\n\n'
+    #         factor_info+='Example: Instructions --- {factor_name} --- Final instructions.'
 
+    st.info(factor_info)
+    
     with st.container(border=True):
         
         factor_names_raw = [f[0] for f in current_round['factors_list']]
@@ -411,34 +413,41 @@ def show_mixed_segments(current_round, round_counter):
         factor_names_display = ['`{' + f + '}`' for f in factor_names_raw]
         factor_names_str = ' '.join(factor_names_display)
         
-        segment = current_round.get('segment')
-        text_content  = st.text_area(
-            f"Round Segment\n\nFactors to use: {factor_names_str}", 
-            value=segment, 
-            key=f"segment_text_{current_round['key']}"
-        )
-        current_round['segment'] = text_content
-        # st.write('current_round[segment]', current_round['segment'])
-        # 3. Check for missing factors
-        missing_factors = []
-        # Loop through the raw factor names ('Sales', 'Marketing', etc.)
-        if current_round['segment']:
-            for factor in factor_names_raw:
-                # st.write(factor)
-                # Create the placeholder string to search for ('{Sales}', '{Marketing}', etc.)
-                placeholder = f"{{{factor}}}"
-                if placeholder not in current_round['segment']:
-                    missing_factors.append(factor)
-        else:
-            missing_factors = factor_names_raw
-        # st.write('missing_factors', missing_factors)
-        # if text_content and missing_factors:
-        #     # Format the missing factors for a clear warning message
-        #     missing_factors_formatted = ", ".join([f"`{{{f}}}`" for f in missing_factors])
-        #     st.warning(f"**Missing or incorrectly formatted factors:** {missing_factors_formatted}")
-    # st.write("current_round['segment']", current_round['segment'])
+        segment_label = f"Factors to use: {factor_names_str}\n\n"
+        segments = current_round.get('segments')
+        
+        
+        for i, seg in enumerate(segments):
+            col1, col2 = st.columns([3,1])
+            with col1:
+                st.write('Round Segment')
+            with col2:
+                if round_type!='scales':
+                    if st.button('Remove Segment', key=f"remove_segment_{current_round['key']}_{seg['segment_id']}"):
+                        removed_segment = segments.pop(i)
+                        st.rerun()                        
+                
+            text_content  = st.text_area(
+            segment_label, 
+            value=seg['segment_text'], 
+            key=f"segment_text_{current_round['key']}_{seg['segment_id']}"
+            )
+            current_round['segments'][i]['segment_text'] = text_content    
 
-# @st.cache_data
+        
+        if (current_round['round_type'] == 'choice') or (current_round['round_type'] == 'ranking'):
+            if st.button('Add Segment', width='stretch'):
+                # st.write('segment added')
+                new_segment = {
+                    'segment_text':'',
+                    'segment_id': str(uuid.uuid4())
+                }
+                current_round['segments'].append(new_segment)
+                st.session_state.show_toast = True
+                st.session_state.toast_text = 'Segment Added'
+                st.rerun()
+    # st.write('segments', segments)
+
 def get_config_to_save(factors_to_save):
     # config = load_experiment_config(st.session_state.selected_config_path)
     config_to_save = dict()
@@ -573,13 +582,21 @@ def show_mixed_experiment_execution(selected_config_path):
             on_change=process_uploaded_results_csv # The callback function
         )
 
+    st.write(f"Session state results hash: {hash(str(st.session_state.get('results', [])))}")  # Quick way to see if 'results' changed
+
     if st.session_state.get('results'):
-        df = pd.DataFrame(st.session_state['results'])
-        
-        show_results(df, selected_config_path)
-        # st.write(df.to_csv())
-        run_analysis(df)
-    
+        # with Profiler():
+            # Cache the DataFrame creation
+            df = create_dataframe_from_results(st.session_state['results'])
+            
+            show_results(df, selected_config_path)
+            run_analysis(df)
+
+@st.cache_data(show_spinner="Processing results...", ttl=3600)
+def create_dataframe_from_results(results_list):
+    """Cache the DataFrame creation from results list"""
+    return pd.DataFrame(results_list)
+
 def remove_factor_from_state(factor_name, current_round):
     new_list = [f for f in current_round['factors_list'] if f[0]!=factor_name]
     st.toast(f'{factor_name} removed')
@@ -599,7 +616,10 @@ def show_add_factor_dialog(current_round, round_counter):
     )
     new_factor_names_levels = edited_df['Level Name'].values.tolist()
     new_factor_text_levels = edited_df['Level Text for LLM'].values.tolist()
-    new_fact = [new_factor_name, [{f'{new_factor_name}|name':nf_name, f'{new_factor_name}|text':nf_text} for nf_name, nf_text in zip(new_factor_names_levels, new_factor_text_levels)]]
+    new_fact = [
+        new_factor_name, 
+        [{'name':nf_name, 'text':nf_text, 'factor_name':new_factor_name} for nf_name, nf_text in zip(new_factor_names_levels, new_factor_text_levels)]
+    ]
     if st.button("Add factor", key=f'add_button_{current_round["round_type"]}_{round_counter}'):
         current_round['factors_list'].append(new_fact)
 
@@ -612,7 +632,7 @@ def show_factor_combinations_mixed(current_round, round_counter):
     with st.container(border=True):
         # --- Calculate all values first ---
         factor_levels = [fl[1] for fl in current_round['factors_list']]
-        factor_names = [fl[0] for fl in current_round['factors_list']]
+        # factor_names = [fl[0] for fl in current_round['factors_list']]
         factorial_text_display = " x ".join([str(len(fl)) for fl in factor_levels])
         
 
@@ -623,7 +643,7 @@ def show_factor_combinations_mixed(current_round, round_counter):
         for factor_name, factor_level in current_round['factors_list']:
             # st.write(factor_name)
             # st.write(factor_level)
-            details = ', '.join([f[f'{factor_name}|name'] for f in factor_level])
+            details = ', '.join([f['name'] for f in factor_level])
             l.append(f'{factor_name} ({details})')
         factorial_text_display_details = ' x '.join(l)
         st.caption(f"{factorial_text_display_details}")
@@ -631,22 +651,17 @@ def show_factor_combinations_mixed(current_round, round_counter):
 def show_factors_and_levels_mixed(current_round, round_counter):
     for factor_tuple in (current_round['factors_list']):
         factor_name = factor_tuple[0] # product
-        factor_levels = factor_tuple[1] # [{product|name:'Name 1', product|text:'Text 1'},{product|name:'Name 2', product|text:'Text 2'}]
-        # st.write('something')
+        factor_levels = factor_tuple[1] # [{"name":'Name 1', "text":'Text 1', "factor_name": "product"},{product|name:'Name 2', product|text:'Text 2'}]
+        # st.write('factor_levels', factor_levels)
         col_factor, col_remove = st.columns([2,1])
         with col_factor:
-            st.write(factor_name)
+            st.write(f"`{factor_name}`")
         with col_remove:
             if st.button(f'Remove {factor_name}', width='stretch', key=f"remove_button_{current_round['round_type']}_{factor_name}"):
                 remove_factor_from_state(factor_name, current_round=current_round)
                 st.rerun()
         
-        factor_levels_display = []
-        for level_dict  in factor_levels:
-            clean_dict = {k.split('|')[1]: v for k, v in level_dict.items()}
-            factor_levels_display.append(clean_dict)
-
-        original_df = pd.DataFrame(factor_levels_display)
+        original_df = pd.DataFrame(factor_levels)
 
         editor_key = f"data_editor_{current_round['round_type']}_{current_round['key']}_{factor_name}"
 
@@ -690,6 +705,8 @@ def get_choice_permutations(factors_list, num_choices):
         factor_products = get_choice_factor_products(factors_list)
     else:
         factor_products = []
+    # st.write('factors_list', factors_list)
+    # st.write('factor_products', factor_products)
     combinations = list(itertools.permutations(factor_products, num_choices))
     combinations = [list(combo) for combo in combinations]
     return combinations
@@ -698,22 +715,20 @@ def show_choice_combinations_details_pro(current_round, round_counter):
     """
     Displays the experiment setup in a structured and professional card.
     """
-    # st.subheader(f"Round {round_counter}: Experiment Setup")
-
     with st.container(border=True):
         # --- Calculate all values first ---
         factor_levels = [fl[1] for fl in current_round['factors_list']]
         factorial_text_display = " x ".join([str(len(fl)) for fl in factor_levels])
         
         factor_products = get_choice_factor_products(current_round['factors_list'])
+        # st.write('factor_products', factor_products)
         total_combinations = len(factor_products)
         
         num_choices = get_num_choices(current_round)
         
         # Calculate the number of combinations (nCk)
-        # Use math.comb for efficiency and clarity if available (Python 3.8+)
-        # total_sets = math.comb(total_combinations, num_choices)
         combinations = get_choice_permutations(current_round['factors_list'], num_choices)
+        # st.write('combinations', combinations)
         total_sets = len(combinations)
         
         # --- Display the information ---
@@ -753,8 +768,6 @@ def show_ranking_combinations_details_pro(current_round, round_counter):
         factor_levels = [fl[1] for fl in current_round['factors_list']]
         factorial_text_display = " x ".join([str(len(fl)) for fl in factor_levels])
         
-        
-        
         col1, col2 = st.columns(2)
         
         with col1:
@@ -771,15 +784,12 @@ def show_ranking_combinations_details_pro(current_round, round_counter):
                 help="The total number of unique choices generated by the full factorial design. This is 'n'."
             )            
 
-        # st.caption(f"This is calculated as 'n choose r', or C({total_combinations}, {num_choices}).")
-
-    
     
 def show_factor_items_ranking(current_round, round_counter):
     # st.write(current_round)
     if not current_round.get('factors_list'):
         num_items_in_ranking = 0
-        st.info(f'No factors to rank. Add ***at least*** one factor.')
+        st.info('No factors to rank. Add ***at least*** one factor.')
         if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
             show_add_factor_dialog(current_round, round_counter)
     else:
@@ -795,7 +805,7 @@ def show_factor_items_ranking(current_round, round_counter):
 def show_factor_items_choice(current_round, round_counter):
     
     if not current_round.get('factors_list'):
-        st.info(f'No choice factors. Add at least one factor.')
+        st.info('No choice factors. Add at least one factor.')
         
         if st.button(f'Add {current_round["round_type"].capitalize()} Factor'):
             show_add_factor_dialog(current_round, round_counter)
@@ -824,7 +834,7 @@ def show_factor_items_choice(current_round, round_counter):
     
 def show_factor_items_scales(current_round, round_counter):
     if not current_round.get('factors_list'):
-        st.info(f'No scales factors. Add at least one factor.')
+        st.info('No scales factors. Add at least one factor.')
         current_round['factors_list'] = []
 
     else:
@@ -839,11 +849,10 @@ def show_factor_items_scales(current_round, round_counter):
 def show_round_details(current_round, round_counter):
     '''
     '''
-    if not current_round: return
+    if not current_round: 
+        return
 
     st.write(f'## Round {round_counter+1} - {current_round["round_type"].capitalize()}')
-    # round_type = current_round['round_type']
-    # round_metadata = Round_Types[round_type]
 
     tab_factor, tab_segment = st.tabs(
         ['Factors for this Round', 'Segment for this Round'],
@@ -871,11 +880,16 @@ def show_add_round_modal():
     ).lower()
 
     if st.button('Add Round', width='stretch'):
-        
         new_round_key = str(uuid.uuid4())
+        segments = [
+            {
+                'segment_text':'',
+                'segment_id': str(uuid.uuid4())
+            }
+        ]
         new_round = dict(
             key=new_round_key,
-            segment='',
+            segments=segments,
             factors_list=[],
             round_type=round_type
         )
@@ -1073,16 +1087,6 @@ def call_model_for_user_message(model, user_message, current_round, history=[]):
 
 
 
-def get_segment_text_from_segments_list(current_round):
-
-    if not current_round['segment']:
-        return []
-    
-    text_segment = current_round['segment']
-    variables = re.findall(r"{(.*?)}", text_segment)
-    variables = list(set(variables))
-    # st.write('variables', variables)
-    return variables
 
 def filter_factors_list(factors_list, round_segment_variables):
     return [fac for fac in (factors_list) if fac[0] in round_segment_variables]
@@ -1091,18 +1095,17 @@ def group_id_in_segment_variables(round_segment_variables, block_variable_name, 
     # st.write('block_variable_name::::::::::::', block_variable_name)
     # st.write('round_segment_variables', round_segment_variables)
     # st.write('block_variable_level::::::::::', block_variable_level)
-    group_id = block_variable_level.get(f'{block_variable_name}|group_id')
+    group_id = block_variable_level.get('group_id')
     if not group_id:
         return []
     
-    # st.write('group_id', group_id)
-    # st.write('block_variables', block_variables)
     alias_levels = []
     for bvar_name, bvar_levels in block_variables:
+        # st.write('bvar_name', bvar_name)
         for bvar_level in bvar_levels:
-            if ((bvar_level.get(f'{bvar_name}|group_id')==group_id) and (bvar_name in round_segment_variables)):
+            # st.write('bvar_level', bvar_level)
+            if ((bvar_level.get('group_id')==group_id) and (bvar_name in round_segment_variables)):
                 alias_levels.append(bvar_level)
-    # st.write(alias_levels)
     return alias_levels
 
 def remove_dupes_from_complex_list(complex_list):
@@ -1122,8 +1125,6 @@ def remove_dupes_from_complex_list(complex_list):
 
 @st.cache_data
 def get_rounds_factor_combinations(rounds):
-    # st.write(rounds)
-
     rounds_factor_combinations = []
     for round_counter, current_round in enumerate(rounds):
         # st.write(round_counter)
@@ -1141,8 +1142,9 @@ def get_rounds_factor_combinations(rounds):
         
         elif current_round['round_type'] == 'choice':
             num_choices = get_num_choices(current_round)
+            # st.write('filtered_factors_list', filtered_factors_list)
             combinations = get_choice_permutations(filtered_factors_list, num_choices)
-            # st.write(combinations)
+            # st.write('combinations', combinations)
             rounds_factor_combinations.append(combinations)
             
         elif current_round['round_type'] == 'scales':
@@ -1188,6 +1190,7 @@ def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rou
 
                 alias_levels = group_id_in_segment_variables(round_segment_variables, block_variable_name, block_variable_level, block_variables)
                 # st.write(f"### {current_round['round_type']}")
+                # st.write('round_segment_variables', round_segment_variables)
                 # st.write('block_variable_name', block_variable_name)
                 # st.write('alias_levels', alias_levels)
                 # if alias_levels:
@@ -1220,20 +1223,13 @@ def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rou
                     else:
                         new_single_round_combination = single_round_combination[:]
 
-                    # st.write('block_variable_name', block_variable_name)
-                    # st.write('block_variable_level', block_variable_level)
-                    # st.write('current_round', f"\n\n### **{current_round['round_type']}**")
-                    # st.write('single_round_combination', single_round_combination)
-                    # return
                 new_round_combination.append(new_single_round_combination)
             new_all_rounds_combinations.append(new_round_combination)
         # st.write('---')
     # st.write('len(new_all_rounds_combinations)', len(new_all_rounds_combinations))
-    # st.write(new_all_rounds_combinations[:10])
-
+    # st.write('new_all_rounds_combinations[:2]', new_all_rounds_combinations[:2])
 
     block_added_all_rounds_combinations_deduped = remove_dupes_from_complex_list(new_all_rounds_combinations)
-
 
     return block_added_all_rounds_combinations_deduped
 
@@ -1281,8 +1277,6 @@ def show_sample_ranking(current_round, round_counter):
     st.write('---')
     
 def show_sample_choice(current_round, round_counter):
-
-
     rounds = st.session_state.get('rounds')
     if not rounds: 
         st.warning('No Rounds. Add at least one round.')
@@ -1305,6 +1299,7 @@ def show_sample_choice(current_round, round_counter):
     
     # get a combination
     combo = block_added_all_rounds_combinations_deduped[0]
+    # st.write('combo', combo)
     # get current round from combination
     current_round_combo = combo[round_counter]
     
@@ -1331,7 +1326,6 @@ def show_sample_choice(current_round, round_counter):
     st.write('---')
 
 def show_sample_scales(current_round, round_counter):
-
     rounds = st.session_state.get('rounds')
     if not rounds: 
         st.warning('No Rounds. Add at least one round.')
@@ -1348,6 +1342,7 @@ def show_sample_scales(current_round, round_counter):
     
     # get a combination
     combo = block_added_all_rounds_combinations_deduped[0]
+    # st.write('combo', combo)
     # get current round from combination
     current_round_combo = combo[round_counter]
     
@@ -1360,7 +1355,7 @@ def show_sample_scales(current_round, round_counter):
     # st.write('current_round_combo', current_round_combo)
     formatted_text, factors_display = get_llm_text_mixed_scales(current_round_combo, current_round) 
     if factors_display:
-        st.write(f'### Factor Combination: ')
+        st.write('### Factor Combination: ')
         st.write(f'{factors_display}')
         st.write('---')
     else:
@@ -1372,16 +1367,16 @@ def show_sample_scales(current_round, round_counter):
     st.write('---')
 
 
-
 def show_experiment_combinations():
     models_to_test = st.session_state.models_to_test
     total_models_to_test = len(models_to_test)
 
     rounds = st.session_state.get('rounds')
-    if not rounds: return
+    if not rounds: 
+        return
 
     rounds_factor_combinations = get_rounds_factor_combinations(rounds)
-    
+    # st.write('rounds_factor_combinations', rounds_factor_combinations)
     all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)
             
     block_variables = st.session_state.get('block_variables', [])    
@@ -1427,7 +1422,7 @@ def show_round_container():
 
     with st.container(border=True):
         if not st.session_state.get('rounds'):
-            st.info(f'**No Rounds:** Create at least one round of conversation for the LLM.')
+            st.info('**No Rounds:** Create at least one round of conversation for the LLM.')
             if st.button(":material/add: Add Round", width='stretch', type="secondary", key='add_round_modal_button_empty_round'):
                 show_add_round_modal()
 
@@ -1451,7 +1446,7 @@ def show_round_container():
 
                         if st.button(
                             f'Round {round_counter+1} - {current_round["round_type"].capitalize()}',
-                            key=f"round_btn_{current_round['key']}", # Always use a unique key for widgets in a loop
+                            key=f"round_btn_{current_round['key']}",
                             type=button_type,
                             width='stretch'
                         ):
@@ -1461,7 +1456,6 @@ def show_round_container():
                         
                         if is_selected:
                             st.session_state['selected_round_counter'] = round_counter
-
 
                     with row[1]: # remove round
                         if st.button("✕", key=f"del_{current_round['key']}", help="Delete this round"):
@@ -1509,14 +1503,13 @@ def render_mixed_experiment(selected_config_path):
             label='System Prompt', 
             value=system_prompt, 
             placeholder='''Type in your System Prompt''',
-            key=f'system_prompt' 
+            key='system_prompt' 
         )
 
     show_experiment_configs_selectors()
 
     show_block_variables()
-    # st.write(st.session_state.rounds)
-    # with Profiler():
+
     show_round_container()
 
     config_to_save = get_config_to_save(factors_to_save_dict['mixed'])
@@ -1530,7 +1523,7 @@ def render_mixed_experiment(selected_config_path):
     
 
 
-
+@st.cache_data(show_spinner="Running analysis...", ttl=3600)
 def run_analysis(df):
     with st.expander('# Analysis', expanded=False):
         # st.write('# Analysis')
@@ -1559,11 +1552,11 @@ def run_analysis(df):
 
                 # Dispatch to the correct analysis function based on type
                 if round_type == 'scales':
-                    analyze_scales(round_df, columns, round_num)
+                    analyze_scales(round_df, columns)
                 elif round_type == 'choice':
-                    analyze_choice(round_df, columns, round_num)
+                    analyze_choice(round_df, columns)
                 elif round_type == 'ranking':
-                    analyze_ranking(round_df, columns, round_num)
+                    analyze_ranking(round_df, columns)
     
     if not is_prod:
         with st.expander('# CETSCALE', expanded=False):
@@ -1578,9 +1571,11 @@ model_to_country = {
     "Qwen/Qwen3-Next-80B-A3B-Instruct": 'Chinese'
 }
 
+
+@st.cache_data()
 def analyze_CET(df):
     
-    rounds_info = parse_round_info(df.columns)
+    # rounds_info = parse_round_info(df.columns)
     # st.write(rounds_info)
     # columns = [cols for round_counter, cols in rounds_info.items()]
     
@@ -1599,14 +1594,14 @@ def analyze_CET(df):
     
         factor_cols.append(c)
         
-    st.write(f'before dropna:', df.shape[0])
+    st.write('before dropna:', df.shape[0])
     analysis_df_source = df.copy()
     # st.write(response_cols)
     for response_col in response_cols:
         analysis_df_source[response_col] = pd.to_numeric(analysis_df_source[response_col], errors='coerce')
         analysis_df_source.dropna(subset=[response_col], inplace=True)
         
-    st.write(f'after dropna:', analysis_df_source.shape[0])
+    st.write('after dropna:', analysis_df_source.shape[0])
     
     analysis_df_source['CETSCORE'] = analysis_df_source[response_cols].sum(1)
     # st.write(analysis_df_source[model_col].unique().tolist())
@@ -1620,22 +1615,11 @@ def analyze_CET(df):
     res_group = res_group.round(2)
     st.dataframe(res_group)
     
-
-    fig = px.bar(
-        res_group,
-        x='model_name',
-        y='mean',
-        color=block_var,
-        barmode='group',
-        error_y='std',
-        title=f"Mean Score by Model",
-        labels={'mean': 'Mean Score (with Std Dev)'}
-    )
+    fig = cet_plot1(res_group, block_var)
     plotly_config = dict(
         width='stretch'
     )
     st.plotly_chart(fig, config=plotly_config, key='plotly_model_name_mean')
-    # 
     
     # model country
     'No ''meta-llama/Llama-4-Scout-17B-16E-Instruct'
@@ -1645,16 +1629,7 @@ def analyze_CET(df):
     res_group_country = res_group_country.round(2)
     st.dataframe(res_group_country)
     
-    fig = px.bar(
-        res_group_country,
-        x='model_country',
-        y='mean',
-        color=block_var,
-        barmode='group',
-        error_y='std',
-        title=f"Mean Score by Model",
-        labels={'mean': 'Mean Score (with Std Dev)'}
-    )
+    fig = cet_plot2(res_group_country, block_var)
     plotly_config = dict(
         width='stretch'
     )
@@ -1688,8 +1663,37 @@ we show CETSCALE for each model as follows,
 `Shimp, T. A., & Sharma, S. (1987). Consumer ethnocentrism: Construction and validation of the CETSCALE. Journal of marketing research, 24(3), 280-289.`
 ''')
 
+@st.cache_data()
+def cet_plot1(res_group, block_var):
+    fig = px.bar(
+        res_group,
+        x='model_name',
+        y='mean',
+        color=block_var,
+        barmode='group',
+        error_y='std',
+        title=f"Mean Score by Model",
+        labels={'mean': 'Mean Score (with Std Dev)'}
+    )
+    return fig
 
-def analyze_scales(df, columns, round_num):
+@st.cache_data()
+def cet_plot2(res_group_country, block_var):
+    fig = px.bar(
+            res_group_country,
+            x='model_country',
+            y='mean',
+            color=block_var,
+            barmode='group',
+            error_y='std',
+            title="Mean Score by Model",
+            labels={'mean': 'Mean Score (with Std Dev)'}
+    )
+
+    return fig
+
+@st.cache_data()
+def analyze_scales(df, columns):
     """Analyzes Likert scale data by calculating mean and std dev."""
     model_col = 'model_name'
 
@@ -1717,59 +1721,76 @@ def analyze_scales(df, columns, round_num):
         
     # no factor in this scales round
     if not factor_cols:
-
         analysis_df = analysis_df_source.groupby([model_col])[response_col].agg(['mean', 'std']).reset_index()
         analysis_df = analysis_df.round(2)
         st.dataframe(analysis_df)
 
-        fig = px.bar(
-            analysis_df,
-            x=model_col,
-            y='mean',
-            # color=model_col,
-            # barmode='group',
-            error_y='std',
-            title=f"Mean Score by Model",
-            labels={'mean': 'Mean Score (with Std Dev)'}
-        )
-        plotly_config = dict(
-            width='stretch'
-        )
+        # Use cached plot
+        fig = create_scales_no_factors_plot(analysis_df, model_col)
+        plotly_config = dict(width='stretch')
         st.plotly_chart(fig, config=plotly_config)
         return 
-    
+
     for factor_col in factor_cols:
-    
         analysis_df = analysis_df_source.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
         analysis_df = analysis_df.round(2)
         st.dataframe(analysis_df)
 
-        fig1 = px.bar(
-            analysis_df,
-            x=factor_col,
-            y='mean',
-            color=model_col,
-            barmode='group',
-            error_y='std',
-            title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
-            labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
-        )
-        plotly_config = dict(
-            width='stretch'
-        )
+        # Use cached plots
+        fig1 = create_scales_factors_plot1(analysis_df, factor_col, model_col)
+        plotly_config = dict(width='stretch')
         st.plotly_chart(fig1, config=plotly_config, key=f'plotly_model_country_mean_{factor_col}_1')
         
-        fig2 = px.bar(
-            analysis_df,
-            x=model_col,
-            y='mean',
-            color=factor_col,
-            barmode='group',
-            error_y='std',
-            title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
-            labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
-        )
+        fig2 = create_scales_factors_plot2(analysis_df, factor_col, model_col)
         st.plotly_chart(fig2, config=plotly_config, key=f'plotly_model_country_mean_{factor_col}_2')
+
+
+# Cached function for the no-factors plot
+@st.cache_data(show_spinner="Generating scales plot (no factors)...", ttl=3600)
+def create_scales_no_factors_plot(analysis_df, model_col, ):
+    """Cache the bar plot for scales analysis when there are no factors."""
+    fig = px.bar(
+        analysis_df,
+        x=model_col,
+        y='mean',
+        error_y='std',
+        title="Mean Score by Model",
+        labels={'mean': 'Mean Score (with Std Dev)'}
+    )
+    return fig
+
+# Cached function for the first factors plot (by factor_col, colored by model)
+@st.cache_data(show_spinner="Generating scales plot (by factor)...", ttl=3600)
+def create_scales_factors_plot1(analysis_df, factor_col, model_col):
+    """Cache the first bar plot for scales analysis with factors."""
+    fig = px.bar(
+        analysis_df,
+        x=factor_col,
+        y='mean',
+        color=model_col,
+        barmode='group',
+        error_y='std',
+        title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
+        labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
+    )
+    return fig
+
+# Cached function for the second factors plot (by model, colored by factor)
+@st.cache_data(show_spinner="Generating scales plot (by model)...", ttl=3600)
+def create_scales_factors_plot2(analysis_df, factor_col, model_col):
+    """Cache the second bar plot for scales analysis with factors."""
+    fig = px.bar(
+        analysis_df,
+        x=model_col,
+        y='mean',
+        color=factor_col,
+        barmode='group',
+        error_y='std',
+        title=f"Mean Score by {factor_col.split('_')[-1].title()} and Model",
+        labels={'mean': 'Mean Score (with Std Dev)', factor_col: factor_col.split('_')[-1].title()}
+    )
+    return fig
+
 
 def analyze_choice(df, columns, round_num):
     """Analyzes categorical choice data by counting occurrences."""
@@ -1852,23 +1873,22 @@ def parse_round_info(columns):
             
     return rounds_info
     
-
  
 def main():
-    
-    config_path = config_paths['mixed']
-    config = load_experiment_config(config_path)
+    # with Profiler():
+        config_path = config_paths['mixed']
+        config = load_experiment_config(config_path)
 
-    # Store the current config path in session_state if needed later
-    st.session_state.selected_config_path = config_path
-        
-    # On first render, Reset all relevant state variables from the new config
-    for factor_to_load in config.keys():
-        if st.session_state.get(factor_to_load) is None:
-            st.session_state[factor_to_load] = config.get(factor_to_load)
+        # Store the current config path in session_state if needed later
+        st.session_state.selected_config_path = config_path
+            
+        # On first render, Reset all relevant state variables from the new config
+        for factor_to_load in config.keys():
+            if st.session_state.get(factor_to_load) is None:
+                st.session_state[factor_to_load] = config.get(factor_to_load)
 
-    # Render the page
-    render_mixed_experiment(selected_config_path=config_paths['mixed'])
+        # Render the page
+        render_mixed_experiment(selected_config_path=config_paths['mixed'])
 
 def load_experiment_config(path_str):
     """Loads a YAML config file content from a given file path."""
@@ -1955,8 +1975,6 @@ def process_uploaded_results_csv():
             # Optional: Clear the tracker on error so the user can try uploading the same file again
             st.session_state.last_uploaded_file = None
     
-print('')
-
 
 
 
