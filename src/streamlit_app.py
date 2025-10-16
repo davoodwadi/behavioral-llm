@@ -582,7 +582,7 @@ def show_mixed_experiment_execution(selected_config_path):
             on_change=process_uploaded_results_csv # The callback function
         )
 
-    st.write(f"Session state results hash: {hash(str(st.session_state.get('results', [])))}")  # Quick way to see if 'results' changed
+    # st.write(f"Session state results hash: {hash(str(st.session_state.get('results', [])))}")  # Quick way to see if 'results' changed
 
     if st.session_state.get('results'):
         # with Profiler():
