@@ -2,6 +2,8 @@ import streamlit as st
 
 from streamlit_profiler import Profiler
 
+from PIL import Image
+
 import pandas as pd
 import plotly.express as px
 
@@ -31,10 +33,12 @@ from models import get_model, LLMResponse
 class NoAliasDumper(yaml.Dumper):
     def ignore_aliases(self, data):
         return True
-# --- Configuration (Runs once at the top) ---
+ 
+favicon_path = Path.cwd()/'assets/intelchain_square.png'
+im = Image.open(favicon_path)
 st.set_page_config(
     page_title="Behavioral LLM Experiment Hub",
-    page_icon="",
+    page_icon=im,
     layout="wide",
     initial_sidebar_state="collapsed"
 )
