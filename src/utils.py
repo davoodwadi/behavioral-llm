@@ -1,6 +1,10 @@
 import streamlit as st
 import random 
 import re
+import pandas as pd
+from pathlib import Path
+from io import StringIO
+
 
 def get_llm_text_mixed_rank(current_round, factor_levels):
     # st.write('factor_levels', factor_levels)
@@ -251,3 +255,41 @@ def filter_factors_list(factors_list, round_segment_variables):
 class SafeFormatter(dict):
     def __missing__(self, key):
         return '{' + key + '}'  # Return the placeholder unchanged
+    
+
+
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+    
+@st.cache_data(show_spinner="Processing results...", ttl=3600)
+def create_dataframe_from_results(results_list):
+    """Cache the DataFrame creation from results list"""
+    return pd.DataFrame(results_list)
+
+
+    
+    
+
+def process_uploaded_results_csv():
+    # Get the uploaded file from session state using the key.
+    uploaded_file = st.session_state.csv_results_uploader
+    if uploaded_file is not None and uploaded_file!= st.session_state.get('last_uploaded_file'):
+        
+        try:
+            # To read the file as a string
+            stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+            csv_df = pd.read_csv(stringio)
+            csv_dict = csv_df.to_dict(orient='records')
+            
+            # This is the primary action: update the results
+            st.session_state.results = csv_dict
+            
+            st.session_state.last_uploaded_file = uploaded_file
+
+            # st.success(f"Successfully loaded results from '{uploaded_file.name}'!")
+        
+        except Exception as e:
+            st.error(f"Error processing CSV file: {e}")
+            # Optional: Clear the tracker on error so the user can try uploading the same file again
+            st.session_state.last_uploaded_file = None
