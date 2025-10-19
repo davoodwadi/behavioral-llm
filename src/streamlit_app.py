@@ -506,8 +506,12 @@ def convert_df_to_csv(df):
 def show_results(df, selected_config_path):
     st.success(f"Experiment Run Complete.")
 
-    st.write('---')
-    st.write('# Results')
+    # st.write('---')
+    st.subheader(
+        'Results', 
+        anchor='results', 
+        # divider='grey',
+        )
  
     st.dataframe(df.head(1000), width='stretch')
     fn = Path(selected_config_path)
@@ -1486,7 +1490,7 @@ def show_experiment_combinations():
     return combinations_to_run
 
 def show_round_container():
-    st.write('## User Message Rounds')
+    st.write('### User Message Rounds')
     if not st.session_state.get('selected_round'):
         if not st.session_state.get('rounds'):
             st.session_state['selected_round'] = None
@@ -1560,11 +1564,11 @@ def show_round_container():
 def render_mixed_experiment(selected_config_path):
     
     show_toast()
-    st.markdown("# Run a Behavioral Experiment on an LLM")
-    st.markdown("**Select a configuration file, choose the LLMs, and modify the run parameters.**")
+    st.title("Run a Behavioral Experiment on an LLM")
+    st.caption("Select a configuration file, choose the LLMs, and modify the run parameters.")
     
     st.file_uploader(
-        "Upload a YAML configuration file for a predefined experiment.",
+        "*Upload a YAML configuration file for a predefined experiment.*",
         type=['yaml', 'yml'],
         key="yaml_uploader",  # A unique key is required for on_change
         on_change=process_uploaded_yaml # The callback function
@@ -1954,11 +1958,11 @@ def parse_round_info(columns):
  
 def main():
         with st.sidebar:
-            st.header("How to Cite")
-            st.caption(
+            st.header("How to Cite", divider='grey')
+            st.text(
                 "If you use this application in your research, please cite it as follows."
             )
-            st.text(citation_apa)
+            st.caption(citation_apa)
             st.code(citation_bibtext, language='latex', wrap_lines=True) # language=None for plain text
 
         config_path = config_paths['mixed']
@@ -1977,12 +1981,18 @@ def main():
         
         
         # st.markdown("---")
-        if is_prod:
-            with st.container(border=True):
-                st.subheader("Cite This App")
-                st.caption("Please use the following citation if you use this app in your work.")
-                st.text(citation_apa)
-                st.code(citation_bibtext, language='latex')
+        st.write('')
+        st.write('')
+        # st.write('---')
+        st.write('')
+        st.write('')
+        # if is_prod:
+        with st.container(border=False):
+            st.subheader("Cite This App", divider='grey', anchor='cite')
+            # st.write('---')
+            st.text("Please use the following citation if you use this app in your work.")
+            st.caption(citation_apa)
+            st.code(citation_bibtext, language='latex')
         
 def load_experiment_config(path_str):
     """Loads a YAML config file content from a given file path."""
