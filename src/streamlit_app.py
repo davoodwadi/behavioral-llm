@@ -1564,7 +1564,7 @@ def show_round_container():
 def render_mixed_experiment(selected_config_path):
     
     show_toast()
-    st.title("Run a Behavioral Experiment on an LLM")
+    st.header("Run a Behavioral Experiment with an LLM as the Participant")
     st.caption("Select a configuration file, choose the LLMs, and modify the run parameters.")
     
     st.file_uploader(
