@@ -1,56 +1,14 @@
 system_prompt: You are a consumer in a market research study. Your task is to rank
   the options given. Please respond with ONLY the array of the rankings (most preferred
   to least preferred). Do not provide any other text, explanation, or punctuation.
-rounds:
-- key: 987f3daa-14e0-4743-937d-7bd6c0518440
-  segments:
-  - segment_text: 'sdfsdf {bar}
-
-      {bvar}'
-    segment_id: 5913f3cd-dcf2-4923-8088-c336348708b8
-  factors_list:
-  - - scales factor1
-    - - name: Name 1
-        text: Text 1
-        factor_name: scales factor1
-      - name: Name 2
-        text: Text 2
-        factor_name: scales factor1
-  - - scales factor 2
-    - - name: Name 1
-        text: Text 1
-        factor_name: scales factor 2
-      - name: Name 2
-        text: Text 2
-        factor_name: scales factor 2
-  round_type: scales
-- key: db424c0e-1148-4ec9-8ce0-5d9794247e0a
-  segments:
-  - segment_text: 'sdfsdf {bar}
-
-      {bvar}'
-    segment_id: da482dc4-15d9-454e-84eb-1535b4a07365
-  - segment_text: gdfgdfg
-    segment_id: 6611efc1-ee6d-4946-995a-cab61d423b68
-  factors_list: []
-  round_type: choice
-  choices_shown_in_round: 2
-block_variables:
-- - bvar
-  - - name: Name 1
-      text: bvar text 1
-      group_id: us
-      factor_name: bvar
-    - name: Name 2
-      text: bvar text 2
-      group_id: china
-      factor_name: bvar
+rounds: []
+block_variables: []
 k: 1
 test: true
 sleep_amount: 0.01
 models_to_test:
 - deepinfra-Qwen/Qwen3-Next-80B-A3B-Instruct
-randomize: false
+randomize: true
 paper_url: https://doi.org/10.1177/002224378702400304
 api_keys:
   openai: null

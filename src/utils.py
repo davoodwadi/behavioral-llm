@@ -27,7 +27,7 @@ def get_llm_text_mixed_rank(current_round, factor_levels):
             else:
                 st.warning(f"{key} is neither block variable nor is it used as a factor in the segment text")
                 
-
+    # st.write('block_factor_levels', block_factor_levels)
     # separate block and factors
     block_factor_dict = dict()
     block_factor_dict_display = dict()
@@ -43,23 +43,25 @@ def get_llm_text_mixed_rank(current_round, factor_levels):
     ranking_display_order = []
     
     for seg in current_round['segments']:
-            if is_factor_in_segment(filtered_factors_names, seg):
-                # repeat this segment
-                for r, ranking_item in enumerate(factor_factor_levels, 1):
-                    fac = {item['factor_name']: item['text'] for item in ranking_item }
-                    fac_display = {item['factor_name']: item['name'] for item in ranking_item}
-                    fac.update(block_factor_dict)
-                    fac_display.update(block_factor_dict_display)
-                    
-                    ranking_display_order.append(fac_display)
-                    final_text = seg['segment_text'].format_map(SafeFormatter(fac))
-                    text_for_llm_sample_list.append(f"*Item {r}*:\n\n{final_text}")          
-            else:
-                # no factor -> add it once
-                # add block variables
-                final_text = seg['segment_text'].format_map(SafeFormatter(block_factor_dict))
+        if is_factor_in_segment(filtered_factors_names, seg):
+            # repeat this segment
+            for r, ranking_item in enumerate(factor_factor_levels, 1):
+                fac = {item['factor_name']: item['text'] for item in ranking_item }
+                fac_display = {item['factor_name']: item['name'] for item in ranking_item}
+                fac.update(block_factor_dict)
+                fac_display.update(block_factor_dict_display)
                 
-                text_for_llm_sample_list.append(final_text)   
+                ranking_display_order.append(fac_display)
+                final_text = seg['segment_text'].format_map(SafeFormatter(fac))
+                text_for_llm_sample_list.append(f"*Item {r}*:\n\n{final_text}")          
+        else:
+            # st.write('block_factor_dict', block_factor_dict)
+            # st.write(seg['segment_text'])
+            # no factor -> add it once
+            # add block variables
+            final_text = seg['segment_text'].format_map(SafeFormatter(block_factor_dict))
+            
+            text_for_llm_sample_list.append(final_text)   
     
     text_for_llm_sample = '\n\n---\n\n'.join(text_for_llm_sample_list)
 

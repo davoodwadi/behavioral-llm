@@ -80,14 +80,14 @@ if not is_prod:
 st.session_state['api_keys'] = {m.split('-')[0]:None for m in ALL_MODELS}
 
 Round_Types = {
+    'scales': {
+        "Segment_Types": ['Fixed Segment', 'Treatment Segment']
+    },
     'choice': {
         "Segment_Types": ['Fixed Segment', 'Choice Segment']
     },
     'ranking': {
         "Segment_Types": ['Fixed Segment', 'Ranking Segment']
-    },
-    'scales': {
-        "Segment_Types": ['Fixed Segment', 'Treatment Segment']
     }
 }
         
@@ -135,14 +135,11 @@ def process_uploaded_yaml():
             stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
             string_data = stringio.read()
             yaml_data = yaml.safe_load(string_data)
-            # st.write(yaml_data)
             # store the config in state for reset_config
             st.session_state['yaml_data'] = yaml_data
             # Update session state with the keys from the YAML file
             for state_var_name in yaml_data.keys():
                 st.session_state[state_var_name] = yaml_data.get(state_var_name)
-                # st.write(state_var_name, yaml_data.get(state_var_name))
-                # st.write(state_var_name)
             
             # reset selected_round and selected_round_counter
             if yaml_data.get('rounds'):
@@ -163,9 +160,14 @@ def show_experiment_configs_selectors():
     with st.expander('Experiment Configs'):
         k = st.session_state.get('k', 1)
         # st.write(k)
+        # if st.session_state.get('_k')!=k:
+        #     st.session_state['_k'] = k
+        # st.write(k)
         st.number_input(
-            "Number of Iterations", value=k, placeholder="Type a number...",
-            key = 'k'
+            "Number of Iterations", 
+            value=k, 
+            placeholder="Type a number...",
+            key = 'k',
         )
 
         test = st.session_state.get('test', True)
@@ -227,22 +229,43 @@ def show_experiment_configs_selectors():
             key='randomize'
         )
 
+default_config = {
+    'system_prompt':'',
+    'rounds':[],
+    'block_variables':[],
+    'k':1, 
+    'test':True, 
+    'sleep_amount':0.01,
+    'models_to_test':[],
+    'randomize':True,
+    'paper_url':'',
+    'api_keys':None
+}
 def reset_config():
-    if st.session_state.get('yaml_data'):
-        config = st.session_state.get('yaml_data')
-    else:
-        config = load_experiment_config(st.session_state.selected_config_path)
-    
+    # if st.session_state.get('yaml_data'):
+    #     config = st.session_state.get('yaml_data')
+    #     print('yaml_data')
+    # else:
+    #     config = load_experiment_config(st.session_state.selected_config_path)
+    #     print(st.session_state.selected_config_path)
+    # print(config)
     # Reset all relevant state variables from the new config
-    for factor_to_load in config.keys():
-        st.session_state[factor_to_load] = config.get(factor_to_load)
+    for factor_to_load in default_config.keys():
+        # print('factor_to_load', factor_to_load)
+        # print('factor_to_load', config.get(factor_to_load))
+        st.session_state[factor_to_load] = default_config.get(factor_to_load)
     # st.write(config['k'])
     # reset selected_round and selected_round_counter
-    st.session_state.selected_round = st.session_state.rounds[0]
-    st.session_state.selected_round_counter = 0
+    if st.session_state.rounds:
+        st.session_state.selected_round = st.session_state.rounds[0]
+        st.session_state.selected_round_counter = 0
+    else:
+        st.session_state.selected_round = None
+        st.session_state.selected_round_counter = None
+        
 
-    if config.get('api_keys'):
-        api_keys = config.get('api_keys')
+    if default_config.get('api_keys'):
+        api_keys = default_config.get('api_keys')
         for provider_name, api_key in api_keys.items():
             st.session_state[f'{provider_name}_api_key'] = api_key
 
@@ -393,13 +416,7 @@ def apply_editor_changes_and_update_state(factor_name, editor_key, original_df, 
 def show_mixed_segments(current_round, round_counter):
     factor_info = 'Use `{factor_name}` to add placeholders for factors\n\nExample: {product} or {price}\n\n'
     round_type = current_round['round_type']
-    # if current_round['round_type'] == 'ranking':
-    #         factor_info+='Wrap the ranking segment within `---`. This would repeat this chunk for every rank permutation.\n\n'
-    #         factor_info+='Example: Instructions --- {factor_name} --- Final instructions.'
-    # if current_round['round_type'] == 'choice':
-    #         factor_info+='Wrap the choice segment within `---`. This would repeat this chunk for every choice permutation.\n\n'
-    #         factor_info+='Example: Instructions --- {factor_name} --- Final instructions.'
-
+    
     st.info(factor_info)
     
     with st.container(border=True):
@@ -501,21 +518,79 @@ def show_results(df, selected_config_path):
         width='stretch',
     )
     
+def choose_a_subset_of_combinations(all_combinations):
+    total_combinations = len(all_combinations)
+    
+    selection_method = st.radio(
+    label="How would you like to select the combinations to run?",
+    options=("Run all combinations", "Select a random percentage", "Select a random count"),
+    index=0,  # Default to "Run all"
+    horizontal=True,
+    )
 
-def show_mixed_experiment_execution(selected_config_path):
-    # The 'Start' button is only active when not running.
-    # if st.session_state.get('results'):
-    #     st.write('results size', len(st.session_state.get('results')))
-    # st.write('last_uploaded_file', st.session_state.get('last_uploaded_file'))
-    # st.write('csv_results_uploader', st.session_state.get('csv_results_uploader'))
+    # This will hold the final list of combinations to be processed
+    combinations_to_run = []
+
+    if selection_method == "Run all combinations":
+        combinations_to_run = all_combinations
+        st.write(f"✅ All **{total_combinations}** combinations are selected.")
+
+    else:
+        # For both random options, we need a seed for reproducibility
+        seed = st.number_input("Enter a random seed for reproducibility", value=42, min_value=0)
+        random.seed(seed)
+
+        if selection_method == "Select a random percentage":
+            percentage = st.slider(
+                "Select percentage of combinations to run:",
+                min_value=1,
+                max_value=100,
+                value=10,
+                format="%d%%"
+            )
+            count_to_select = int(total_combinations * (percentage / 100))
+            
+            # Ensure at least one combination is selected if percentage > 0
+            count_to_select = max(1, count_to_select)
+            
+            if total_combinations > 0:
+                combinations_to_run = random.sample(all_combinations, k=count_to_select)
+            
+            st.write(f"✅ **{count_to_select}** combinations ({percentage}%) selected randomly.")
+
+        elif selection_method == "Select a random count":
+            # Make sure the max value for the input is the total number of combinations
+            default_value = min(100, total_combinations)
+            count_to_select = st.number_input(
+                "Enter the number of combinations to run:",
+                min_value=1,
+                max_value=total_combinations,
+                value=default_value,
+                step=10,
+            )
+            if total_combinations > 0:
+                combinations_to_run = random.sample(all_combinations, k=int(count_to_select))
+            
+            st.write(f"✅ **{len(combinations_to_run)}** combinations selected randomly.")
+    return combinations_to_run
+
+def show_mixed_experiment_execution(combinations_to_run, selected_config_path):
+    
     col1, col2 = st.columns(2)
     with col1:
         st.checkbox('Append to existing results', False, key='append_to_results')
     with col2:
-        if st.button('Reset Results', key='reset_results_button'):
+        if st.button('Reset Results', key='reset_results_button', width='stretch'):
             st.session_state.show_toast = True
             st.session_state.toast_text = 'Results Have Been Reset'
             st.session_state.results = []
+    with st.expander('Load Results'):
+        st.file_uploader(
+            "Upload a csv file for an experiment you already ran",
+            type=['csv'],
+            key="csv_results_uploader",  # A unique key is required for on_change
+            on_change=process_uploaded_results_csv # The callback function
+        )
     
     if not st.session_state.is_running: 
         # option to append new results to existing results
@@ -569,18 +644,12 @@ def show_mixed_experiment_execution(selected_config_path):
             # st.write('current results', len(st.session_state['results']))
             st.info('Appending to Existing Results Dataset')
             
-        run_experiments()
+        run_experiments(combinations_to_run)
         st.session_state.is_running = False
         st.rerun()
 
 
-    with st.expander('Load Results'):
-        st.file_uploader(
-            "Upload a csv file for an experiment you already ran",
-            type=['csv'],
-            key="csv_results_uploader",  # A unique key is required for on_change
-            on_change=process_uploaded_results_csv # The callback function
-        )
+
 
     # st.write(f"Session state results hash: {hash(str(st.session_state.get('results', [])))}")  # Quick way to see if 'results' changed
 
@@ -591,6 +660,15 @@ def show_mixed_experiment_execution(selected_config_path):
             
             show_results(df, selected_config_path)
             run_analysis(df)
+            
+            if not is_prod:
+                st.checkbox('Show CETSCALE Analysis', value=False, key='show_cetscale')
+        
+                if st.session_state.get('show_cetscale'):
+                    # st.write('showing CET')
+                    with st.expander('# CETSCALE', expanded=False):
+                        analyze_CET(df)
+    
 
 @st.cache_data(show_spinner="Processing results...", ttl=3600)
 def create_dataframe_from_results(results_list):
@@ -902,23 +980,13 @@ def show_add_round_modal():
         st.rerun()
 
 
-def run_experiments():
+def run_experiments(combinations_to_run):
     api_keys = st.session_state['api_keys']
     models_objects_to_test = [get_model(name, api_keys) for name in st.session_state.models_to_test]
     total_models_to_test = len(models_objects_to_test)
 
-
-    rounds = st.session_state.get('rounds')
-    if not rounds: return
-
-    rounds_factor_combinations = get_rounds_factor_combinations(rounds)
     
-    all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)
-    
-    block_variables = st.session_state.get('block_variables', [])    
-    block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
-    
-    total_iterations = total_models_to_test * len(block_added_all_rounds_combinations_deduped) * st.session_state.k
+    total_iterations = total_models_to_test * len(combinations_to_run) * st.session_state.k
 
     progress_text = f"Running {total_iterations} experiments..."
     my_bar = st.progress(0, text=progress_text)
@@ -929,7 +997,7 @@ def run_experiments():
     for model in models_objects_to_test:
         # go through all combinations
         go_through_all_combinations(
-            block_added_all_rounds_combinations_deduped, 
+            combinations_to_run, 
             model=model, 
             results=st.session_state['results'],
             progress_tracker=progress_tracker,
@@ -1092,19 +1160,12 @@ def filter_factors_list(factors_list, round_segment_variables):
     return [fac for fac in (factors_list) if fac[0] in round_segment_variables]
 
 def group_id_in_segment_variables(round_segment_variables, block_variable_name, block_variable_level, block_variables):
-    # st.write('block_variable_name::::::::::::', block_variable_name)
-    # st.write('round_segment_variables', round_segment_variables)
-    # st.write('block_variable_level::::::::::', block_variable_level)
-    group_id = block_variable_level.get('group_id')
-    if not group_id:
-        return []
+    group_id = block_variable_level.get('group_id') or block_variable_level.get('name')
     
     alias_levels = []
     for bvar_name, bvar_levels in block_variables:
-        # st.write('bvar_name', bvar_name)
         for bvar_level in bvar_levels:
-            # st.write('bvar_level', bvar_level)
-            if ((bvar_level.get('group_id')==group_id) and (bvar_name in round_segment_variables)):
+            if (((bvar_level.get('group_id')==group_id) or (bvar_level.get('name')==group_id)) and (bvar_name in round_segment_variables)):
                 alias_levels.append(bvar_level)
     return alias_levels
 
@@ -1162,7 +1223,6 @@ def get_all_rounds_combinations(rounds_factor_combinations):
 @st.cache_data
 def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables):
 
-     
     if len(block_variables)<1:
         return all_rounds_combinations
     else:
@@ -1179,8 +1239,6 @@ def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rou
     for i, round_combination in enumerate(all_rounds_combinations):
         # st.write(f'combination {i}')
         for b, block_variable_level in enumerate(block_variable_levels): 
-            # st.write(f'block {block_variable_level["country|name"]}')
-            
             # insert each block_variable_level in the round_combination
             # same block_variable_level for all rounds
             new_round_combination = []
@@ -1236,8 +1294,6 @@ def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rou
 
 
 def show_sample_ranking(current_round, round_counter):
-
-    
     rounds = st.session_state.get('rounds')
     if not rounds: 
         st.warning('No Rounds. Add at least one round.')
@@ -1247,9 +1303,10 @@ def show_sample_ranking(current_round, round_counter):
     
     all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)    
     # st.write(all_rounds_combinations)
-    block_variables = st.session_state.get('block_variables', [])    
+    block_variables = st.session_state.get('block_variables', [])   
+    # st.write('block_variables', block_variables) 
     block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
-    # st.write(block_added_all_rounds_combinations_deduped)
+    # st.write(block_added_all_rounds_combinations_deduped[:2])
     # get a combination
     combo = block_added_all_rounds_combinations_deduped[0]
     # get current round from combination
@@ -1380,35 +1437,49 @@ def show_experiment_combinations():
     all_rounds_combinations = get_all_rounds_combinations(rounds_factor_combinations)
             
     block_variables = st.session_state.get('block_variables', [])    
+    if block_variables:
+        block_var_name, block_var_levels = block_variables[0]
+        # st.write(block_var_levels)
+        num_block_variable_levels = len(block_var_levels)        
+    else:
+        num_block_variable_levels = 0    
     block_added_all_rounds_combinations_deduped = get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables)
     
-    # st.write('len(block_added_all_rounds_combinations_deduped)', len(block_added_all_rounds_combinations_deduped))
-    # st.write('block_added_all_rounds_combinations_deduped', block_added_all_rounds_combinations_deduped)
-    # all_combinations_length_display = ' x '.join([str(len(combo)) for combo in rounds_factor_combinations])
-    
-    total_iterations = total_models_to_test * len(block_added_all_rounds_combinations_deduped) * st.session_state.k
+ 
+    total_combinations = len(block_added_all_rounds_combinations_deduped)
+ 
     k_value = st.session_state.k
     # Use a container to group the experiment summary
     with st.container(border=True):
         st.subheader("Experiment Configuration Summary")
-
-        # Display the core parameters
-        # st.markdown(f"**Combinations:** `{all_combinations_length_display}`")
-        # st.markdown(f"**K value:** `{k_value}`")
-
+        
         # Use a divider to separate parameters from metrics
         st.divider()
 
         # Use columns for a dashboard-like layout of the key metrics
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric(label="Total Models", value=total_models_to_test)
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col4:
+            st.metric(label="Total Combinations", value=len(block_added_all_rounds_combinations_deduped))
         with col2:
             st.metric(label="***k*** Value", value=k_value)
+        with col1:
+            st.metric(label="Total Models", value=total_models_to_test)
         with col3:
-            st.metric(label="Total Combinations", value=len(block_added_all_rounds_combinations_deduped))
-        with col4:
-            st.metric(label="Total Iterations", value=total_iterations)
+            st.metric(label="Block Variable Levels", value=num_block_variable_levels)
+
+
+        with st.expander('Choose a Subset of Combinations to Run (optional)'):
+            combinations_to_run = choose_a_subset_of_combinations(block_added_all_rounds_combinations_deduped)
+        
+        # 3. Show a preview and the final run button
+        # st.markdown("---")
+        st.info(f"***Executing {len(combinations_to_run)} out of {total_combinations} combinations***")
+        # st.markdown("---")
+        
+        total_iterations = total_models_to_test * len(combinations_to_run) * st.session_state.k
+        st.metric(label="Total Iterations = Total Models × *k* × Combinations to Run", value=f"{total_iterations}")
+        # st.write(f"### Total Iterations\n\nTotal Models × *k* × Total Combinations = {total_iterations}")
+    return combinations_to_run
 
 def show_round_container():
     st.write('## User Message Rounds')
@@ -1494,33 +1565,37 @@ def render_mixed_experiment(selected_config_path):
         key="yaml_uploader",  # A unique key is required for on_change
         on_change=process_uploaded_yaml # The callback function
     )
-    if st.button('Reset Configuration'):
-        reset_config()
 
-    with st.expander('System Prompt'):
-        system_prompt = st.session_state.get('system_prompt', '')
-        st.text_area(
-            label='System Prompt', 
-            value=system_prompt, 
-            placeholder='''Type in your System Prompt''',
-            key='system_prompt' 
-        )
 
-    show_experiment_configs_selectors()
+    with st.container(border=True, horizontal=True):
+        col_config, col_reset = st.columns(2)
+        with col_config:
+            show_experiment_configs_selectors()
+            show_block_variables()
 
-    show_block_variables()
+
+        with col_reset:
+            with st.expander('System Prompt'):
+                st.text_area(
+                    label='System Prompt', 
+                    value=st.session_state.get('system_prompt', ''), 
+                    placeholder='''Type in your System Prompt''',
+                    key='system_prompt' 
+                )
+            if st.button('Reset Configuration', width='stretch'):
+                reset_config()
+            
 
     show_round_container()
 
     config_to_save = get_config_to_save(factors_to_save_dict['mixed'])
     # st.write(config_to_save)
 
-    show_experiment_combinations()
+    combinations_to_run = show_experiment_combinations()
 
     show_download_save_config(config_to_save, selected_config_path)
 
-    show_mixed_experiment_execution(selected_config_path)
-    
+    show_mixed_experiment_execution(combinations_to_run, selected_config_path)
 
 
 @st.cache_data(show_spinner="Running analysis...", ttl=3600)
@@ -1541,7 +1616,8 @@ def run_analysis(df):
             round_type = one_column.split('_')[1]
             # st.write(round_type)
 
-            with st.expander(f"### Round {round_num+1}: {round_type.capitalize()}", expanded=True):
+            to_expand = True if round_num==0 else False
+            with st.expander(f"### Round {round_num+1}: {round_type.capitalize()}", expanded=to_expand):
                 
                 # Filter out rows where the necessary columns for this round are NaN
                 # This is important because not all rows have data for all rounds
@@ -1558,9 +1634,7 @@ def run_analysis(df):
                 elif round_type == 'ranking':
                     analyze_ranking(round_df, columns)
     
-    if not is_prod:
-        with st.expander('# CETSCALE', expanded=False):
-            analyze_CET(df)
+
 
 model_to_country = {
     "gemini-2.5-flash-lite":'American',
@@ -1723,7 +1797,7 @@ def analyze_scales(df, columns):
     if not factor_cols:
         analysis_df = analysis_df_source.groupby([model_col])[response_col].agg(['mean', 'std']).reset_index()
         analysis_df = analysis_df.round(2)
-        st.dataframe(analysis_df)
+        # st.dataframe(analysis_df)
 
         # Use cached plot
         fig = create_scales_no_factors_plot(analysis_df, model_col)
@@ -1734,7 +1808,7 @@ def analyze_scales(df, columns):
     for factor_col in factor_cols:
         analysis_df = analysis_df_source.groupby([model_col, factor_col])[response_col].agg(['mean', 'std']).reset_index()
         analysis_df = analysis_df.round(2)
-        st.dataframe(analysis_df)
+        # st.dataframe(analysis_df)
 
         # Use cached plots
         fig1 = create_scales_factors_plot1(analysis_df, factor_col, model_col)
@@ -1792,7 +1866,7 @@ def create_scales_factors_plot2(analysis_df, factor_col, model_col):
     return fig
 
 
-def analyze_choice(df, columns, round_num):
+def analyze_choice(df, columns):
     """Analyzes categorical choice data by counting occurrences."""
     model_col = 'model_name'
     
@@ -1835,7 +1909,7 @@ def analyze_choice(df, columns, round_num):
     # )
     # st.plotly_chart(fig, config=plotly_config)
 
-def analyze_ranking(df, columns, round_num):
+def analyze_ranking(df, columns):
     """Analyzes ranking data by calculating mean rank."""
     model_col = 'model_name'
     
@@ -1875,7 +1949,14 @@ def parse_round_info(columns):
     
  
 def main():
-    # with Profiler():
+        with st.sidebar:
+            st.header("How to Cite")
+            st.caption(
+                "If you use this application in your research, please cite it as follows."
+            )
+            st.text(citation_apa)
+            st.code(citation_bibtext, language='latex', wrap_lines=True) # language=None for plain text
+
         config_path = config_paths['mixed']
         config = load_experiment_config(config_path)
 
@@ -1889,7 +1970,16 @@ def main():
 
         # Render the page
         render_mixed_experiment(selected_config_path=config_paths['mixed'])
-
+        
+        
+        # st.markdown("---")
+        if is_prod:
+            with st.container(border=True):
+                st.subheader("Cite This App")
+                st.caption("Please use the following citation if you use this app in your work.")
+                st.text(citation_apa)
+                st.code(citation_bibtext, language='latex')
+        
 def load_experiment_config(path_str):
     """Loads a YAML config file content from a given file path."""
     try:
@@ -1918,7 +2008,7 @@ def show_download_save_config(config_to_save, selected_config_path):
             st.download_button(
             "Download Config",
             yaml.dump(config_to_save, sort_keys=False, Dumper=NoAliasDumper),
-            f"{selected_config_path}",
+            f"config.yaml",
             "text/yaml",
             key='download-yaml',
             width='stretch'
@@ -1986,7 +2076,16 @@ class ProgressTracker:
     total_iterations: int
 
 
+citation_bibtext = """@inproceedings{
+wadi2025a,
+title={A Monte-Carlo Sampling Framework For Reliable Evaluation of Large Language Models Using Behavioral Analysis},
+author={Davood Wadi and Marc Fredette},
+booktitle={The 2025 Conference on Empirical Methods in Natural Language Processing},
+year={2025},
+url={https://openreview.net/forum?id=lpm6tSIoE6}
+}"""
 
+citation_apa = '''Davood Wadi, & Marc Fredette (2025). A Monte-Carlo Sampling Framework For Reliable Evaluation of Large Language Models Using Behavioral Analysis. In The 2025 Conference on Empirical Methods in Natural Language Processing.'''
 
 if __name__ == "__main__":
     main()
