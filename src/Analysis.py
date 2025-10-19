@@ -355,7 +355,13 @@ def show_results(df, selected_config_path):
         anchor='results', 
         # divider='grey',
         )
- 
+    with st.expander('Load Results'):
+        st.file_uploader(
+            "Upload a csv file for an experiment you already ran",
+            type=['csv'],
+            key="csv_results_uploader",  # A unique key is required for on_change
+            on_change=process_uploaded_results_csv # The callback function
+        )
     st.dataframe(df.head(1000), width='stretch')
     fn = Path(selected_config_path)
     fn = f'{fn.stem}.csv'
@@ -370,16 +376,7 @@ def show_results(df, selected_config_path):
     )
 
 if st.session_state.get('results'):
-    # with Profiler():
-        # Cache the DataFrame creation
-        with st.expander('Load Results'):
-            st.file_uploader(
-                "Upload a csv file for an experiment you already ran",
-                type=['csv'],
-                key="csv_results_uploader",  # A unique key is required for on_change
-                on_change=process_uploaded_results_csv # The callback function
-            )
-            
+    # with Profiler():            
         df = create_dataframe_from_results(st.session_state['results'])
         selected_config_path = st.session_state.get('selected_config_path')
         show_results(df, selected_config_path)
