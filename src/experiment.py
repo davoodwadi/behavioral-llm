@@ -18,8 +18,7 @@ from src.utils import SafeFormatter, NoAliasDumper, ProgressTracker
 from src.models import get_model, LLMResponse
 from src.global_configs import ALL_MODELS, is_prod
 from src.global_configs import default_config, factors_to_save, Round_Types, config_paths
-
-
+from src.page_analysis import analysis_page
 
 
 def process_uploaded_yaml():
@@ -448,7 +447,7 @@ def show_results(df, selected_config_path):
         )
     with col_analyze:
         if st.button('Analyze', width='stretch'):
-            st.switch_page('Analysis.py')
+            st.switch_page(analysis_page)
     
 def show_mixed_experiment_execution(combinations_to_run, selected_config_path):
     

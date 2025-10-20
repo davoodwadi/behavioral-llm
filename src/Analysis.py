@@ -9,12 +9,9 @@ from pathlib import Path
 from collections import defaultdict
 import re
 
-from utils import create_dataframe_from_results, process_uploaded_results_csv, convert_df_to_csv
-
-APP_ENVIRONMENT = os.environ.get('APP_ENV', 'dev') 
-is_prod = (APP_ENVIRONMENT == 'production')
-
-
+from src.utils import create_dataframe_from_results, process_uploaded_results_csv, convert_df_to_csv
+from src.utils import create_dataframe_from_results, process_uploaded_results_csv, convert_df_to_csv
+from src.global_configs import ALL_MODELS, is_prod
 
 
 def parse_round_info(columns):
