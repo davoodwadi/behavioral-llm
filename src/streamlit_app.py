@@ -47,7 +47,7 @@ with st.sidebar:
         st.caption(citation_apa)
         st.code(citation_bibtext, language='latex', wrap_lines=True) 
 
-cwd = Path.cwd()
+# cwd = Path.cwd()
 # experiment_path = cwd/'src/experiment.py'
 # analysis_path = cwd/'src/analysis.py'
 # st.write(experiment_path)
