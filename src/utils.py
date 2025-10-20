@@ -4,6 +4,12 @@ import re
 import pandas as pd
 from pathlib import Path
 from io import StringIO
+import yaml
+
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
+
+
 
 
 def get_llm_text_mixed_rank(current_round, factor_levels):
@@ -293,3 +299,19 @@ def process_uploaded_results_csv():
             st.error(f"Error processing CSV file: {e}")
             # Optional: Clear the tracker on error so the user can try uploading the same file again
             st.session_state.last_uploaded_file = None
+            
+            
+            
+            
+
+
+class NoAliasDumper(yaml.Dumper):
+    def ignore_aliases(self, data):
+        return True
+ 
+@dataclass
+class ProgressTracker:
+    """Standardized response object for all LLM queries."""
+    counter: int
+    progress_bar: Any
+    total_iterations: int
