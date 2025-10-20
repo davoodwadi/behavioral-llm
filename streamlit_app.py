@@ -29,8 +29,8 @@ import sys
 
 import itertools
 
-import psutil
-from pympler import asizeof
+# import psutil
+# from pympler import asizeof
 
 from src.utils import SafeFormatter, NoAliasDumper
 from src.utils import create_dataframe_from_results, process_uploaded_results_csv, convert_df_to_csv
@@ -41,14 +41,6 @@ from src. page_experiment import experiment_page
 
 favicon_path = Path.cwd()/'assets/intelchain_square.png'
 im = Image.open(favicon_path)
-
-# Example: get total memory used by all items in session_state
-# total_bytes = sum(sys.getsizeof(v) for v in st.session_state.values())
-# st.write(f"Total size of session_state (shallow): {total_bytes / 1024:.2f} KB")
-# process = psutil.Process(os.getpid())
-# mem_info = process.memory_info()
-# st.write(f"RSS memory: {mem_info.rss / (1024**2):.2f} MB")
-# st.write(st.session_state)
 
 # Get the path to the 'config' directory (assuming it's relative to the app file)
 APP_FILE = Path(__file__)
@@ -106,42 +98,42 @@ for var in session_variable_names:
         st.session_state[var] = st.session_state[var]
 
 
-def monitor_mem():
-    st.title("🧠 Memory Monitor")
+# def monitor_mem():
+#     st.title("🧠 Memory Monitor")
 
-    # Process reference
-    process = psutil.Process(os.getpid())
+#     # Process reference
+#     process = psutil.Process(os.getpid())
 
-    # Initialize tracking dataframe in session_state
-    if "mem_history" not in st.session_state:
-        st.session_state.mem_history = pd.DataFrame(columns=["time", "process_mb", "session_mb"])
-        st.session_state.start_time = time.time()
+#     # Initialize tracking dataframe in session_state
+#     if "mem_history" not in st.session_state:
+#         st.session_state.mem_history = pd.DataFrame(columns=["time", "process_mb", "session_mb"])
+#         st.session_state.start_time = time.time()
 
-    # Measure memory usage
-    process_mem = process.memory_info().rss / 1024**2
-    session_mem = asizeof.asizeof(st.session_state) / 1024**2
-    elapsed = time.time() - st.session_state.start_time
+#     # Measure memory usage
+#     process_mem = process.memory_info().rss / 1024**2
+#     session_mem = asizeof.asizeof(st.session_state) / 1024**2
+#     elapsed = time.time() - st.session_state.start_time
 
-    # Append reading to history
-    new_row = pd.DataFrame([{
-        "time": elapsed,
-        "process_mb": process_mem,
-        "session_mb": session_mem
-    }])
-    st.session_state.mem_history = pd.concat(
-        [st.session_state.mem_history, new_row],
-        ignore_index=True
-    ).tail(1000)  # keep last 1000 readings
+#     # Append reading to history
+#     new_row = pd.DataFrame([{
+#         "time": elapsed,
+#         "process_mb": process_mem,
+#         "session_mb": session_mem
+#     }])
+#     st.session_state.mem_history = pd.concat(
+#         [st.session_state.mem_history, new_row],
+#         ignore_index=True
+#     ).tail(1000)  # keep last 1000 readings
 
-    # Plot
-    st.line_chart(st.session_state.mem_history.set_index("time"))
+#     # Plot
+#     st.line_chart(st.session_state.mem_history.set_index("time"))
 
-    st.write(f"**Process memory:** {process_mem:.2f} MB")
-    st.write(f"**Session state memory:** {session_mem:.2f} MB")
+#     st.write(f"**Process memory:** {process_mem:.2f} MB")
+#     st.write(f"**Session state memory:** {session_mem:.2f} MB")
 
-    st.caption("This updates each time the page reruns. To observe growth, interact with widgets or refresh.")
+#     st.caption("This updates each time the page reruns. To observe growth, interact with widgets or refresh.")
 def main():
-    monitor_mem()
+    # monitor_mem()
     with st.sidebar:
         with st.expander("How to Cite"):
             st.text(
