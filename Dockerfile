@@ -1,6 +1,4 @@
 FROM ghcr.io/astral-sh/uv:python3.10-trixie
-# FROM python:3.13.5-slim
-# COPY --from=ghcr.io/astral-sh/uv:0.9.0 /uv /uvx /bin/
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -8,7 +6,6 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the project into the image
 ADD . /app
 
 WORKDIR /app
@@ -20,4 +17,5 @@ EXPOSE 8501
 
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
 
-ENTRYPOINT ["streamlit", "run", "src/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# ENTRYPOINT ["streamlit", "run", "src/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+ENTRYPOINT ["python", "-m", "streamlit", "run", "src/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
