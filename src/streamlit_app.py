@@ -42,10 +42,16 @@ with st.sidebar:
             "If you use this application in your research, please cite it as follows."
         )
         st.caption(citation_apa)
-        st.code(citation_bibtext, language='latex', wrap_lines=True) # language=None for plain text
+        st.code(citation_bibtext, language='latex', wrap_lines=True) 
 
-experiment_page = st.Page('Experiment.py', title='Run Experiments', default=True)
-analysis_page = st.Page('Analysis.py', title='Analyze Results')
+cwd = Path.cwd()
+experiment_path = cwd/'src/Experiment.py'
+analysis_path = cwd/'src/Analysis.py'
+st.write(experiment_path)
+
+experiment_page = st.Page(experiment_path, title='Run Experiments', default=True)
+analysis_page = st.Page(analysis_path, title='Analyze Results')
+
 pg = st.navigation([experiment_page, analysis_page])
 
 st.set_page_config(
