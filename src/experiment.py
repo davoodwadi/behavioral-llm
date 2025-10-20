@@ -18,7 +18,7 @@ from src.utils import SafeFormatter, NoAliasDumper, ProgressTracker
 from src.models import get_model, LLMResponse
 from src.global_configs import ALL_MODELS, is_prod
 from src.global_configs import default_config, factors_to_save, Round_Types, config_paths
-from src.page_analysis import analysis_page
+# from src.page_analysis import analysis_page
 
 
 def process_uploaded_yaml():
@@ -436,18 +436,18 @@ def show_results(df, selected_config_path):
     fn = f'{fn.stem}.csv'
     csv_df = convert_df_to_csv(df)
     col_download, col_analyze = st.columns(2)
-    with col_download:
-        st.download_button(
-            "Download results",
-            csv_df,
-            fn,
-            "text/csv",
-            key='download-csv',
-            width='stretch',
-        )
-    with col_analyze:
-        if st.button('Analyze', width='stretch'):
-            st.switch_page(analysis_page)
+    # with col_download:
+    st.download_button(
+        "Download results",
+        csv_df,
+        fn,
+        "text/csv",
+        key='download-csv',
+        width='stretch',
+    )
+    # with col_analyze:
+    #     if st.button('Analyze', width='stretch'):
+    #         st.switch_page(analysis_page)
     
 def show_mixed_experiment_execution(combinations_to_run, selected_config_path):
     
