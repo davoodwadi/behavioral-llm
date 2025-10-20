@@ -12,13 +12,13 @@ import time
 from datetime import datetime
 import json
 
-from src.utils import create_dataframe_from_results, process_uploaded_results_csv, convert_df_to_csv
-from src.utils import get_llm_text_mixed_rank, get_llm_text_mixed_choice, get_llm_text_mixed_scales, get_segment_text_from_segments_list 
-from src.utils import SafeFormatter, NoAliasDumper, ProgressTracker
-from src.models import get_model, LLMResponse
-from src.global_configs import ALL_MODELS, is_prod
-from src.global_configs import default_config, factors_to_save, Round_Types, config_paths
-# from src.page_analysis import analysis_page
+from .utils import create_dataframe_from_results, process_uploaded_results_csv, convert_df_to_csv
+from .utils import get_llm_text_mixed_rank, get_llm_text_mixed_choice, get_llm_text_mixed_scales, get_segment_text_from_segments_list 
+from .utils import SafeFormatter, NoAliasDumper, ProgressTracker
+from .models import get_model, LLMResponse
+from .global_configs import ALL_MODELS, is_prod
+from .global_configs import default_config, factors_to_save, Round_Types, config_paths
+# from .page_analysis import analysis_page
 
 
 def process_uploaded_yaml():

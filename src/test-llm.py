@@ -1,8 +1,8 @@
-from models import get_model, LLMResponse
+from .models import get_model, LLMResponse
 import os
 from pprint import pprint
 
-from streamlit_app import ALL_MODELS
+from .global_configs import ALL_MODELS
 
 provider_lookup = {
     'openai':'OPENAI_API_KEY',
