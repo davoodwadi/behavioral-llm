@@ -1,11 +1,9 @@
 import streamlit as st
 from PIL import Image
 from pathlib import Path
-import sys
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-st.write(sys.path)
-from experiment import Experiment
-from analysis import Analysis
+
+from src.experiment import Experiment
+from src.analysis import Analysis
 
 favicon_path = Path.cwd()/'assets/intelchain_square.png'
 im = Image.open(favicon_path)
