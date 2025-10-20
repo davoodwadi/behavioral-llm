@@ -1457,7 +1457,7 @@ def stop_run_callback():
 
 
 
-def Experiment():
+def experiment_main():
     config_path = config_paths['mixed']
     config = load_experiment_config(config_path)
 

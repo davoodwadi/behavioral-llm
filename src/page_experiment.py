@@ -1,5 +1,5 @@
 import streamlit as st
 
-from .experiment import Experiment
+from .experiment_component import experiment_main
 
-experiment_page = st.Page(Experiment, title='Run Experiments', default=True)
+experiment_page = st.Page(experiment_main, title='Run Experiments', default=True)
