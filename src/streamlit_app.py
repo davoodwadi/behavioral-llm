@@ -2,12 +2,34 @@ import streamlit as st
 from PIL import Image
 from pathlib import Path
 
-from src.experiment import Experiment
-from src.analysis import Analysis
+from experiment import Experiment
+from analysis import Analysis
+
+import sys
+st.write(sys.path)
 
 favicon_path = Path.cwd()/'assets/intelchain_square.png'
 im = Image.open(favicon_path)
 
+def initialize_session_state():
+    # App state flags
+    if 'is_running' not in st.session_state:
+        st.session_state.is_running = False
+    if 'last_uploaded_file' not in st.session_state:
+        st.session_state.last_uploaded_file = None
+
+    # Default values for experiment settings
+    if 'system_prompt' not in st.session_state:
+        st.session_state.system_prompt = "Default prompt..."
+    if 'models_to_test' not in st.session_state:
+        st.session_state.models_to_test = []
+    
+    # Initialize API keys dictionary based on models from config
+    if 'api_keys' not in st.session_state:
+        st.session_state.api_keys = {m.split('-')[0]: None for m in config.ALL_MODELS}
+    
+
+initialize_session_state()
 
 citation_bibtext = """@inproceedings{
 wadi2025a,

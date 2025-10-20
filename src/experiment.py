@@ -40,19 +40,13 @@ APP_ENVIRONMENT = os.environ.get('APP_ENV', 'dev')
 
 is_prod = (APP_ENVIRONMENT == 'production')
 
-# Initialize session state flags
-if 'is_running' not in st.session_state:
-    st.session_state.is_running = False
-
-if 'last_uploaded_file' not in st.session_state:
-    st.session_state.last_uploaded_file = None
-
 # Get the path to the 'config' directory (assuming it's relative to the app file)
 APP_FILE = Path(__file__)
 APP_DIR = APP_FILE.parent
 PROJECT_DIR = APP_DIR.parent
 CONFIG_DIR = PROJECT_DIR / 'config'
 EXPERIMENT_TYPES = ['mixed', 'choice', 'scales', 'ranking']
+
 ALL_MODELS = [  
     "openai-gpt-4.1-nano",
     "anthropic-claude-3-5-haiku-20241022",
@@ -594,7 +588,7 @@ def show_mixed_experiment_execution(combinations_to_run, selected_config_path):
             on_change=process_uploaded_results_csv # The callback function
         )
     
-    if not st.session_state.is_running: 
+    if not st.session_state.get('is_running'): 
         # option to append new results to existing results
     
         if st.button(
