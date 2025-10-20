@@ -80,10 +80,8 @@ def analyze_ranking(df, columns):
     
     st.markdown(f"Analyzing mean rank of `{response_col}` grouped by `{model_col}` and `{factor_cols}`.")
     
-# Cached function for the no-factors plot
-@st.cache_data(show_spinner="Generating scales plot (no factors)...", ttl=3600)
+# @st.cache_data(show_spinner="Generating scales plot (no factors)...", ttl=3600)
 def create_scales_no_factors_plot(analysis_df, model_col, ):
-    """Cache the bar plot for scales analysis when there are no factors."""
     fig = px.bar(
         analysis_df,
         x=model_col,
@@ -94,10 +92,8 @@ def create_scales_no_factors_plot(analysis_df, model_col, ):
     )
     return fig
 
-# Cached function for the first factors plot (by factor_col, colored by model)
-@st.cache_data(show_spinner="Generating scales plot (by factor)...", ttl=3600)
+# @st.cache_data(show_spinner="Generating scales plot (by factor)...", ttl=3600)
 def create_scales_factors_plot1(analysis_df, factor_col, model_col):
-    """Cache the first bar plot for scales analysis with factors."""
     fig = px.bar(
         analysis_df,
         x=factor_col,
@@ -110,10 +106,8 @@ def create_scales_factors_plot1(analysis_df, factor_col, model_col):
     )
     return fig
 
-# Cached function for the second factors plot (by model, colored by factor)
-@st.cache_data(show_spinner="Generating scales plot (by model)...", ttl=3600)
+# @st.cache_data(show_spinner="Generating scales plot (by model)...", ttl=3600)
 def create_scales_factors_plot2(analysis_df, factor_col, model_col):
-    """Cache the second bar plot for scales analysis with factors."""
     fig = px.bar(
         analysis_df,
         x=model_col,
@@ -137,7 +131,7 @@ model_to_country = {
     "Qwen/Qwen3-Next-80B-A3B-Instruct": 'Chinese'
 }
 
-@st.cache_data()
+# @st.cache_data()
 def analyze_CET(df):
 
     
@@ -223,7 +217,7 @@ we show CETSCALE for each model as follows,
 `Shimp, T. A., & Sharma, S. (1987). Consumer ethnocentrism: Construction and validation of the CETSCALE. Journal of marketing research, 24(3), 280-289.`
 ''')
 
-@st.cache_data()
+# @st.cache_data()
 def cet_plot1(res_group, block_var):
     fig = px.bar(
         res_group,
@@ -237,7 +231,7 @@ def cet_plot1(res_group, block_var):
     )
     return fig
 
-@st.cache_data()
+# @st.cache_data()
 def cet_plot2(res_group_country, block_var):
     fig = px.bar(
             res_group_country,
@@ -252,7 +246,7 @@ def cet_plot2(res_group_country, block_var):
 
     return fig
 
-@st.cache_data()
+# @st.cache_data()
 def analyze_scales(df, columns):
     """Analyzes Likert scale data by calculating mean and std dev."""
     model_col = 'model_name'
@@ -285,7 +279,6 @@ def analyze_scales(df, columns):
         analysis_df = analysis_df.round(2)
         # st.dataframe(analysis_df)
 
-        # Use cached plot
         fig = create_scales_no_factors_plot(analysis_df, model_col)
         plotly_config = dict(width='stretch')
         st.plotly_chart(fig, config=plotly_config)
@@ -296,7 +289,6 @@ def analyze_scales(df, columns):
         analysis_df = analysis_df.round(2)
         # st.dataframe(analysis_df)
 
-        # Use cached plots
         fig1 = create_scales_factors_plot1(analysis_df, factor_col, model_col)
         plotly_config = dict(width='stretch')
         st.plotly_chart(fig1, config=plotly_config, key=f'plotly_model_country_mean_{factor_col}_1')
@@ -305,7 +297,7 @@ def analyze_scales(df, columns):
         st.plotly_chart(fig2, config=plotly_config, key=f'plotly_model_country_mean_{factor_col}_2')
 
 
-@st.cache_data(show_spinner="Running analysis...", ttl=3600)
+# @st.cache_data(show_spinner="Running analysis...", ttl=3600)
 def run_analysis(df):
         # st.write('# Analysis')
         # st.write(df.iloc[:3].to_csv())

@@ -262,13 +262,12 @@ class SafeFormatter(dict):
     
 
 
-@st.cache_data
+# @st.cache_data
 def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
     
-@st.cache_data(show_spinner="Processing results...", ttl=3600)
+# @st.cache_data(show_spinner="Processing results...", ttl=3600)
 def create_dataframe_from_results(results_list):
-    """Cache the DataFrame creation from results list"""
     return pd.DataFrame(results_list)
 
   

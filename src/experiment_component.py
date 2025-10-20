@@ -345,7 +345,7 @@ def get_config_to_save(factors_to_save):
     return config_to_save
 
 
-@st.cache_data
+# @st.cache_data
 def get_rank_permutations_multi_factor(factors_list):
     if not factors_list:
         return []
@@ -627,13 +627,13 @@ def mix_block_factor_variables(factors_products, block_variable_products):
     full_products = [[*bvp, *fp] for fp in factors_products for bvp in block_variable_products]
     return full_products
     
-@st.cache_data
+# @st.cache_data
 def get_choice_factor_products(factors_list):        
     factor_levels = [fl[1] for fl in factors_list]
     factor_products = [list(p) for p in itertools.product(*factor_levels)]
     return factor_products
 
-@st.cache_data
+# @st.cache_data
 def get_choice_permutations(factors_list, num_choices):
     if factors_list:
         factor_products = get_choice_factor_products(factors_list)
@@ -1016,7 +1016,7 @@ def remove_dupes_from_complex_list(complex_list):
             
     return new_list
 
-@st.cache_data
+# @st.cache_data
 def get_rounds_factor_combinations(rounds):
     rounds_factor_combinations = []
     for round_counter, current_round in enumerate(rounds):
@@ -1040,13 +1040,13 @@ def get_rounds_factor_combinations(rounds):
         
     return rounds_factor_combinations
 
-@st.cache_data
+# @st.cache_data
 def get_all_rounds_combinations(rounds_factor_combinations):
     all_rounds_combinations = list(itertools.product(*rounds_factor_combinations))
     all_rounds_combinations = [list(combo) for combo in all_rounds_combinations]
     return all_rounds_combinations
 
-@st.cache_data
+# @st.cache_data
 def get_block_added_all_rounds_combinations_deduped(all_rounds_combinations, rounds, block_variables):
 
     if len(block_variables)<1:

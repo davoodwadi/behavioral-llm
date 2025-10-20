@@ -12,6 +12,7 @@ WORKDIR /app
 RUN uv sync --locked
 
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH=/app
 
 EXPOSE 8501
 
