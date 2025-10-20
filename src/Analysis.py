@@ -375,19 +375,20 @@ def show_results(df, selected_config_path):
         width='stretch',
     )
 
-if st.session_state.get('results'):
-    # with Profiler():            
-        df = create_dataframe_from_results(st.session_state['results'])
-        selected_config_path = st.session_state.get('selected_config_path')
-        show_results(df, selected_config_path)
-        with st.expander('# Analysis', expanded=False):
-            run_analysis(df)
+def Analysis():
+    if st.session_state.get('results'):
+        # with Profiler():            
+            df = create_dataframe_from_results(st.session_state['results'])
+            selected_config_path = st.session_state.get('selected_config_path')
+            show_results(df, selected_config_path)
+            with st.expander('# Analysis', expanded=False):
+                run_analysis(df)
+                
             
-        
-        if not is_prod:
-            st.checkbox('Show CETSCALE Analysis', value=False, key='show_cetscale')
+            if not is_prod:
+                st.checkbox('Show CETSCALE Analysis', value=False, key='show_cetscale')
 
-            if st.session_state.get('show_cetscale'):
-                # st.write('showing CET')
-                with st.expander('# CETSCALE', expanded=False):
-                    analyze_CET(df)
+                if st.session_state.get('show_cetscale'):
+                    # st.write('showing CET')
+                    with st.expander('# CETSCALE', expanded=False):
+                        analyze_CET(df)

@@ -2,6 +2,9 @@ import streamlit as st
 from PIL import Image
 from pathlib import Path
 
+from experiment import Experiment
+from analysis import Analysis
+
 favicon_path = Path.cwd()/'assets/intelchain_square.png'
 im = Image.open(favicon_path)
 
@@ -45,12 +48,12 @@ with st.sidebar:
         st.code(citation_bibtext, language='latex', wrap_lines=True) 
 
 cwd = Path.cwd()
-experiment_path = cwd/'src/Experiment.py'
-analysis_path = cwd/'src/Analysis.py'
-st.write(experiment_path)
+# experiment_path = cwd/'src/experiment.py'
+# analysis_path = cwd/'src/analysis.py'
+# st.write(experiment_path)
 
-experiment_page = st.Page(experiment_path, title='Run Experiments', default=True)
-analysis_page = st.Page(analysis_path, title='Analyze Results')
+experiment_page = st.Page(Experiment, title='Run Experiments', default=True)
+analysis_page = st.Page(Analysis, title='Analyze Results')
 
 pg = st.navigation([experiment_page, analysis_page])
 

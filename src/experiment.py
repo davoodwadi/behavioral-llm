@@ -1661,22 +1661,22 @@ class ProgressTracker:
     total_iterations: int
 
 
+def Experiment():
+    config_path = config_paths['mixed']
+    config = load_experiment_config(config_path)
 
-config_path = config_paths['mixed']
-config = load_experiment_config(config_path)
+    # Store the current config path in session_state if needed later
+    st.session_state.selected_config_path = config_path
+        
+    # On first render, Reset all relevant state variables from the new config
+    for factor_to_load in config.keys():
+        if st.session_state.get(factor_to_load) is None:
+            # st.write('setting', factor_to_load)
+            st.session_state[factor_to_load] = config.get(factor_to_load)
 
-# Store the current config path in session_state if needed later
-st.session_state.selected_config_path = config_path
-    
-# On first render, Reset all relevant state variables from the new config
-for factor_to_load in config.keys():
-    if st.session_state.get(factor_to_load) is None:
-        # st.write('setting', factor_to_load)
-        st.session_state[factor_to_load] = config.get(factor_to_load)
-
-# st.write(st.session_state)
-# Render the page
-render_mixed_experiment(selected_config_path=config_paths['mixed'])
+    # st.write(st.session_state)
+    # Render the page
+    render_mixed_experiment(selected_config_path=config_paths['mixed'])
 
 
 
