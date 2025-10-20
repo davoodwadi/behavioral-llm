@@ -372,7 +372,7 @@ def show_results(df, selected_config_path):
         width='stretch',
     )
 
-def Analysis():
+def analysis_component():
     if st.session_state.get('results'):
         # with Profiler():            
             df = create_dataframe_from_results(st.session_state['results'])

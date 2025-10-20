@@ -10,8 +10,6 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
 
-
-
 def get_llm_text_mixed_rank(current_round, factor_levels):
     # st.write('factor_levels', factor_levels)
     
@@ -273,10 +271,7 @@ def create_dataframe_from_results(results_list):
     """Cache the DataFrame creation from results list"""
     return pd.DataFrame(results_list)
 
-
-    
-    
-
+  
 def process_uploaded_results_csv():
     # Get the uploaded file from session state using the key.
     uploaded_file = st.session_state.csv_results_uploader
@@ -299,12 +294,8 @@ def process_uploaded_results_csv():
             st.error(f"Error processing CSV file: {e}")
             # Optional: Clear the tracker on error so the user can try uploading the same file again
             st.session_state.last_uploaded_file = None
+                      
             
-            
-            
-            
-
-
 class NoAliasDumper(yaml.Dumper):
     def ignore_aliases(self, data):
         return True

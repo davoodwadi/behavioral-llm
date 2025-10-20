@@ -1,5 +1,5 @@
 import streamlit as st
 
-from .analysis import Analysis
+from .analysis import analysis_component
 
-analysis_page = st.Page(Analysis, title='Analyze Results')
+analysis_page = st.Page(analysis_component, title='Analyze Results')
